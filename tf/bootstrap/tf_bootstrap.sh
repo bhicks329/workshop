@@ -3,7 +3,7 @@ set -eu
 
 export baseName=${1}
 export environment=${2}
-export resourceGroup="${baseName}-${environment}"
+export resourceGroup="mgmt-${baseName}-${environment}"
 export location="uksouth"
 export servicePrincipalName="sp-terraform-${baseName}-${environment}"
 
