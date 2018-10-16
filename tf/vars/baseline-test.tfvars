@@ -1,0 +1,14 @@
+# Environment Specific Settings
+environment = "test"
+
+basename = "baseline"
+
+location = "uksouth"
+
+address_space = "10.1.0.0/16"
+
+cluster_subnet_prefix = "10.1.1.0/24"
+
+admin_username = "azureadmin"
+
+cluster_os_disk_size = "100"
