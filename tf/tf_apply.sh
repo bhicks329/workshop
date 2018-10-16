@@ -24,7 +24,7 @@ load_sp() {
 
 export baseName=${1}
 export environment=${2}
-export resourceGroup="${baseName}-${environment}"
+export resourceGroup="mgmt-${baseName}-${environment}"
 export servicePrincipalName="sp-terraform-${baseName}-${environment}"
 export random=$(create_rand ${baseName}${environment} 4)
 export tfStorageAccount="${baseName}${environment}${random}"

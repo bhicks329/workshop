@@ -1,5 +1,5 @@
 # Environment Specific Settings
-environment = "test"
+environment = "dev"
 
 basename = "baseline"
 
