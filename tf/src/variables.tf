@@ -25,3 +25,8 @@ variable "admin_username" {
 variable "cluster_os_disk_size" {
   type    = "string"
 }
+
+
+variable "kubernetes_version" {
+  type    = "string"
+}
