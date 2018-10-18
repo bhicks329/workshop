@@ -1,5 +1,5 @@
 locals {
-  vault_name = "${random_string.vault_prefix.result}${var.basename}${var.environment}"
+  vault_name = "${var.basename}${var.environment}${random_string.vault_prefix.result}"
 }
 
 data "azurerm_client_config" "current" {}

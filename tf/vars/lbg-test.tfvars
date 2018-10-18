@@ -1,7 +1,7 @@
 # Environment Specific Settings
-environment = "dev"
+environment = "test"
 
-basename = "baseline"
+basename = "lbg"
 
 location = "uksouth"
 

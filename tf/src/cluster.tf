@@ -20,8 +20,8 @@ resource "azurerm_kubernetes_cluster" "aks_cluster_1" {
 
   agent_pool_profile {
     name            = "agentpool"
-    count           = "1"
-    vm_size         = "Standard_DS2_v2"
+    count           = "2"
+    vm_size         = "Standard_F2s_v2"
     os_type         = "Linux"
     os_disk_size_gb = "${var.cluster_os_disk_size}"
 
@@ -30,8 +30,8 @@ resource "azurerm_kubernetes_cluster" "aks_cluster_1" {
   }
 
   service_principal {
-    client_id     = "${azurerm_azuread_application.aks_cluster.application_id}"
-    client_secret = "${random_string.aks_cluster_sp_pass.result}"
+    client_id     = "${data.azurerm_key_vault_secret.clientId.value}"
+    client_secret = "${data.azurerm_key_vault_secret.password.value}"
   }
 
   network_profile {
