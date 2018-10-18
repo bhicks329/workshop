@@ -11,22 +11,21 @@ variable "location" {
 }
 
 variable "address_space" {
-  type    = "string"
+  type = "string"
 }
 
 variable "cluster_subnet_prefix" {
-  type    = "string"
+  type = "string"
 }
 
 variable "admin_username" {
-  type    = "string"
+  type = "string"
 }
 
 variable "cluster_os_disk_size" {
-  type    = "string"
+  type = "string"
 }
 
-
 variable "kubernetes_version" {
-  type    = "string"
+  type = "string"
 }

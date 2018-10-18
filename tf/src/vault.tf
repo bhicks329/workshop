@@ -22,7 +22,6 @@ resource "azurerm_key_vault" "vault" {
 
   tenant_id = "${data.azurerm_client_config.current.tenant_id}"
 
-  
   # Policy for the Service Principial creating the key vault
   # Review access policies for Service Principial
   access_policy {

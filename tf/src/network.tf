@@ -11,5 +11,4 @@ resource "azurerm_subnet" "cluster_subnet" {
   network_security_group_id = "${azurerm_network_security_group.cluster_subnet_nsg.id}"
   address_prefix            = "${var.cluster_subnet_prefix}"
   virtual_network_name      = "${azurerm_virtual_network.cluster_virtual_network.name}"
-
 }
