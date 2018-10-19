@@ -29,3 +29,7 @@ variable "cluster_os_disk_size" {
 variable "kubernetes_version" {
   type = "string"
 }
+
+variable "home_dir" {
+  type = "string"
+}
