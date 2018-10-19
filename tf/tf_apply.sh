@@ -140,6 +140,7 @@ while read package; do
 done < ${required_packages}
 
 # Adding home directory value to the configuration file
+sed -i "" 's/home_dir.*//g' ./vars/${baseName}-${environment}.tfvars
 if [[ ! $(grep home_dir ./vars/${baseName}-${environment}.tfvars) ]]; then
    echo "home_dir value does not exist in the variable file, adding..."
    printf "\nhome_dir = \"$(echo $HOME)\"\n" >> ./vars/${baseName}-${environment}.tfvars
@@ -226,11 +227,11 @@ echo "export ARM_CLIENT_ID=${appId}" > $HOME/terraconfig/.terraconfig
 echo "export ARM_TENANT_ID=${tenant}" >> $HOME/terraconfig/.terraconfig
 echo "export ARM_CLIENT_SECRET=${password}" >> $HOME/terraconfig/.terraconfig
 echo "export ARM_SUBSCRIPTION_ID=${subscriptionId}" >> $HOME/terraconfig/.terraconfig
-printf "terraform init -reconfigure \
-	-backend-config=\"container_name=${tfStorageContainer}\" \
-	-backend-config=\"storage_account_name=${tfStorageAccount}\" \
-	-backend-config=\"key=infra.${environment}.tfstate\" \
-	-backend-config=\"access_key=${tfStorageKey}\" \
+printf "terraform init -reconfigure \\
+	-backend-config=\"container_name=${tfStorageContainer}\" \\
+	-backend-config=\"storage_account_name=${tfStorageAccount}\" \\
+	-backend-config=\"key=infra.${environment}.tfstate\" \\
+	-backend-config=\"access_key=${tfStorageKey}\" \\
 	${PWD}/src/\n" >> $HOME/terraconfig/.terraconfig
 
 terraform validate -var-file vars/${baseName}-${environment}.tfvars src/

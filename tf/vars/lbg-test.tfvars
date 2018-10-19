@@ -14,3 +14,5 @@ admin_username = "azureadmin"
 cluster_os_disk_size = "100"
 
 kubernetes_version = "1.11.3"
+
+
