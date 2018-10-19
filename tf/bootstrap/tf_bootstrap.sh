@@ -6,6 +6,7 @@ export environment=${2}
 export resourceGroup="mgmt-${baseName}-${environment}"
 export location="uksouth"
 export servicePrincipalName="sp-terraform-${baseName}-${environment}"
+export required_packages="./required_packages.cnf"
 
 generate_manifest() {
 	cat <<EOF >mgmt_manifest.json
@@ -123,17 +124,13 @@ export tfStorageContainer="${baseName}${environment}"
 export vaultName="${baseName}${environment}${random}"
 
 
-
-# Check for the AZ command line
-if ! which az >/dev/null; then
-	echo "Missing azure cli"
-	exit 1
-fi
-
-#  Check for JQ
-if ! which jq >/dev/null; then
-	echo "Missing jq"
-fi
+#  Check for required packages
+while read package; do
+  if ! which ${package} >/dev/null; then
+	  echo "Missing ${package}"
+	  exit 1
+  fi
+done < ${required_packages}
 
 # Check and display the current subscription
 subscriptionId=$(az account list | jq -r ' .[] | select(.isDefault==true) | .id')
