@@ -139,13 +139,6 @@ while read package; do
   fi
 done < ${required_packages}
 
-# Adding home directory value to the configuration file
-sed -i "" 's/home_dir.*//g' ./vars/${baseName}-${environment}.tfvars
-if [[ ! $(grep home_dir ./vars/${baseName}-${environment}.tfvars) ]]; then
-   echo "home_dir value does not exist in the variable file, adding..."
-   printf "\nhome_dir = \"$(echo $HOME)\"\n" >> ./vars/${baseName}-${environment}.tfvars
-fi
-
 # Check and display the current subscription
 subscriptionId=$(az account list | jq -r ' .[] | select(.isDefault==true) | .id')
 subscriptionName=$(az account list | jq -r ' .[] | select(.isDefault==true) | .name')
@@ -170,6 +163,11 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 	[[ "$0" == "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
 fi
 echo
+
+# Adding home directory value to the configuration file
+echo "Adding/updating home_dir value in the variable file..."
+sed -i "" '/home_dir.*/d' ./vars/${baseName}-${environment}.tfvars
+printf "home_dir = \"$(echo $HOME)\"\n" >> ./vars/${baseName}-${environment}.tfvars
 
 #  TODO - Check for SA and bomb out if not found
 # Grab the storage connection string
