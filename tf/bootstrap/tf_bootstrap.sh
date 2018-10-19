@@ -127,7 +127,7 @@ export vaultName="${baseName}${environment}${random}"
 #  Check for required packages
 while read package; do
   if ! which ${package} >/dev/null; then
-	  echo "Missing ${package}"
+	  echo "Missing ${package}, exiting..."
 	  exit 1
   fi
 done < ${required_packages}

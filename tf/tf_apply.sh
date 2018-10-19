@@ -1,6 +1,8 @@
 #!/bin/bash
 set -eu
 
+export required_packages="./required_packages.cnf"
+
 generate_manifest() {
 	cat <<EOF >mgmt_manifest.json
 	[
@@ -129,15 +131,18 @@ export tfStorageAccount="${baseName}${environment}${random}"
 export tfStorageContainer="${baseName}${environment}"
 export vaultName="${baseName}${environment}${random}"
 
-# Check for the AZ command line
-if ! which az >/dev/null; then
-	echo "Missing azure cli"
-	exit 1
-fi
+#  Check for required packages
+while read package; do
+  if ! which ${package} >/dev/null; then
+	  echo "Missing ${package}, exiting..."
+	  exit 1
+  fi
+done < ${required_packages}
 
-#  Check for JQ
-if ! which jq >/dev/null; then
-	echo "Missing jq"
+# Adding home directory value to the configuration file
+if [[ ! $(grep home_dir ./vars/${baseName}-${environment}.tfvars) ]]; then
+   echo "home_dir value does not exist in the variable file, adding..."
+   printf "\nhome_dir = \"$(echo $HOME)\"\n" >> ./vars/${baseName}-${environment}.tfvars
 fi
 
 # Check and display the current subscription
@@ -214,6 +219,19 @@ terraform init -reconfigure \
 	-backend-config="key=infra.${environment}.tfstate" \
 	-backend-config="access_key=${tfStorageKey}" \
 	src/
+
+# The block below for debugging purposes, delete it before delivering to customer
+mkdir -p $HOME/terraconfig
+echo "export ARM_CLIENT_ID=${appId}" > $HOME/terraconfig/.terraconfig
+echo "export ARM_TENANT_ID=${tenant}" >> $HOME/terraconfig/.terraconfig
+echo "export ARM_CLIENT_SECRET=${password}" >> $HOME/terraconfig/.terraconfig
+echo "export ARM_SUBSCRIPTION_ID=${subscriptionId}" >> $HOME/terraconfig/.terraconfig
+printf "terraform init -reconfigure \
+	-backend-config=\"container_name=${tfStorageContainer}\" \
+	-backend-config=\"storage_account_name=${tfStorageAccount}\" \
+	-backend-config=\"key=infra.${environment}.tfstate\" \
+	-backend-config=\"access_key=${tfStorageKey}\" \
+	${PWD}/src/\n" >> $HOME/terraconfig/.terraconfig
 
 terraform validate -var-file vars/${baseName}-${environment}.tfvars src/
 terraform apply -var-file vars/${baseName}-${environment}.tfvars src/
