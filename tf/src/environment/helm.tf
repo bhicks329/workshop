@@ -17,18 +17,20 @@
 #     }
 #   }
 # }
-resource "helm_release" "jenkins" {
-    name      = "jenkins"
-    chart     = "stable/jenkins"
 
-    set {
-        name  = "name"
-        value = "jenkins"
-    }
 
-    set {
-        name = "namespace"
-        value = "devops"
-    }
-    depends_on = ["null_resource.helm_init"]
-}
+# resource "helm_release" "jenkins" {
+#     name      = "jenkins"
+#     chart     = "stable/jenkins"
+
+#     set {
+#         name  = "name"
+#         value = "jenkins"
+#     }
+
+#     set {
+#         name = "namespace"
+#         value = "devops"
+#     }
+#     depends_on = ["null_resource.helm_init"]
+# }

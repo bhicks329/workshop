@@ -8,11 +8,12 @@
 #  depends_on = ["local_file.kubeconfig"]
 #}
 
-resource "null_resource" "helm_init" {
-  provisioner "local-exec" {
-    command = <<EOT
-       helm init 
-    EOT
-  }
-  depends_on = ["local_file.kubeconfig"]
-}
+# resource "null_resource" "helm_init" {
+#   provisioner "local-exec" {
+#     command = <<EOT
+#        helm init 
+#     EOT
+#   }
+#   depends_on = ["local_file.kubeconfig"]
+# }
+

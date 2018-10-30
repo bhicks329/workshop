@@ -1,11 +1,6 @@
 #!/bin/bash
 set -eu
 
-export baseName=${1}
-export environment=${2}
-export resourceGroup="mgmt-${baseName}-${environment}"
-export location="uksouth"
-export servicePrincipalName="sp-terraform-${baseName}-${environment}"
 # export required_packages="./required_packages.cnf"
 
 generate_manifest() {
@@ -85,7 +80,18 @@ create_sp() {
 
 	# If credentials have changed - Update the vault
 	if [[ ${newCreds} -eq 0 ]]; then
-		echo "Skipping vault update ..."
+		echo "Skipping vault update and loading loading existing SP credentials ..."
+		echo "Getting $servicePrincipalName-clientId ..."
+		appId=$(az keyvault secret show --name $servicePrincipalName-clientId --vault-name ${vaultName} 2>/dev/null | jq -r .value)
+
+		echo "Getting $servicePrincipalName-tenant ..."
+		tenant=$(az keyvault secret show --name $servicePrincipalName-tenant --vault-name ${vaultName} 2>/dev/null | jq -r .value)
+
+		echo "Getting $servicePrincipalName-password ..."
+		password=$(az keyvault secret show --name $servicePrincipalName-password --vault-name ${vaultName} 2>/dev/null | jq -r .value)
+
+		echo "Getting $servicePrincipalName-subscriptionId ..."
+		subscriptionId=$(az keyvault secret show --name $servicePrincipalName-subscriptionId --vault-name ${vaultName} 2>/dev/null | jq -r .value)
 	else
 		echo "Setting ${servicePrincipalName}-clientId  in ${vaultName}"
 		az keyvault secret set --vault-name ${vaultName} --name ${servicePrincipalName}-clientId --value ${appId}
@@ -116,78 +122,54 @@ create_sp() {
 
 }
 
-
+export baseName=${1}
+export environment=${2}
+export resourceGroup="mgmt-${baseName}-${environment}"
+export servicePrincipalName="sp-aks-terraform-${baseName}-${environment}"
 export random=$(create_rand ${baseName}${environment} 4)
-
 export tfStorageAccount="${baseName}${environment}${random}"
 export tfStorageContainer="${baseName}${environment}"
 export vaultName="${baseName}${environment}${random}"
 
-
-#  Check for required packages
-while read package; do
-  if ! which ${package} >/dev/null; then
-	  echo "Missing ${package}, exiting..."
-	  exit 1
-  fi
-done < ${required_packages}
+# #  Check for required packages
+# while read package; do
+#   if ! which ${package} >/dev/null; then
+# 	  echo "Missing ${package}, exiting..."
+# 	  exit 1
+#   fi
+# done < ${required_packages}
 
 # Check and display the current subscription
 subscriptionId=$(az account list | jq -r ' .[] | select(.isDefault==true) | .id')
 subscriptionName=$(az account list | jq -r ' .[] | select(.isDefault==true) | .name')
 echo
 
-# Check with the user we are in the right subscription
+if [ -z ${3+x} ]; then
+	echo
+else
+	echo
+	echo "Running with showCreds only."
+	echo "Terraform will not be invoked"
+	echo
+	credsOnly="1"
+fi
+
+# Check with the user we are in the right one
 echo "Running in subscription: ${subscriptionName}"
 echo "Subscription ID: ${subscriptionId}"
 read -p "Are you sure? " -n 1 -r
-echo 
+echo # (optional) move to a new line
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 	[[ "$0" == "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
 fi
 echo
 
-# Check and create for resource group
-if [[ $(az group show -n ${resourceGroup} -o tsv | wc -l) -eq 0 ]]; then
-	echo "Creating Resource Group \"${resourceGroup}\" ..."
-	az group create --name ${resourceGroup} --location ${location}
-else
-	echo "Resource Group \"${resourceGroup}\" already exists, nothing todo"
-fi
+# # Adding home directory value to the configuration file
+# echo "Adding/updating home_dir value in the variable file..."
+# sed -i "" '/home_dir.*/d' ./vars/${baseName}-${environment}.tfvars
+# printf "home_dir = \"$(echo $HOME)\"\n" >> ./vars/${baseName}-${environment}.tfvars
 
-
-# Check and create keyvault
-if [[ $(az keyvault show --name ${vaultName} -o json 2>/dev/null | wc -l) -eq 0 ]]; then
-	echo "Create Azure keyvault \"${vaultName}\""
-	az keyvault create --resource-group ${resourceGroup} \
-		--name ${vaultName} \
-		--location ${location} \
-		--enable-soft-delete=true \
-		--enabled-for-deployment=false \
-		--enabled-for-disk-encryption=false \
-		--enabled-for-template-deployment=false \
-		--sku=premium \
-		--tags "environment=${environment}"
-else
-	echo "Vault \"${vaultName}\" already exists, nothing todo"
-fi
-
-# Check and update storage account
-if [[ "$(az storage account check-name --name ${tfStorageAccount} | jq -r '.nameAvailable')" == "true" ]]; then
-	echo "Storage Account \"${tfStorageAccount}\" is missing, will be created"
-	az storage account create \
-		--location ${location} \
-		--name ${tfStorageAccount} \
-		--resource-group ${resourceGroup} \
-		--sku Standard_GRS \
-		--encryption-services blob \
-		--kind BlobStorage \
-		--access-tier hot \
-		--https-only
-else
-	echo "Storage Account \"${tfStorageAccount}\" already exists, nothing todo"
-fi
-
+#  TODO - Check for SA and bomb out if not found
 # Grab the storage connection string
 echo "Fetching storage connection string"
 AZURE_STORAGE_CONNECTION_STRING=$(az storage account show-connection-string \
@@ -202,17 +184,7 @@ tfStorageKey=$(az storage account keys list \
 	--resource-group ${resourceGroup} 2>/dev/null | jq -r .[0].value)
 export tfStorageKey
 
-# Use the connection string to check and create the storage account container
-if [[ $(az storage container exists --name ${tfStorageContainer} | jq -r '.exists') == false ]]; then
-	echo "Storage Container \"${tfStorageContainer}\" is missing, will be created"
-	az storage container create \
-		--name ${tfStorageContainer} \
-		--public-access blob
-else
-	echo "Storage Container \"${tfStorageContainer}\" already exists, nothing todo"
-fi
-
-# Create the terraform service principle
+# Grab the credentials from the vault
 create_sp
 
 # Grabs the objectId of the principle
@@ -230,7 +202,36 @@ if [ -f mgmt_manifest.json ] ; then
     rm mgmt_manifest.json
 fi
 
-echo
-echo "All Done"
-# Until the pull request for "az grant" is approved - a manual configuration step is required.
-echo "If this is a new environment - please ensure you have clicked \"Grant Permissions\" in the portal for after running this script"
+# # Set TF env variables
+export ARM_CLIENT_ID=${appId}
+export ARM_TENANT_ID=${tenant}
+export ARM_CLIENT_SECRET=${password}
+export ARM_SUBSCRIPTION_ID=${subscriptionId}
+
+# Uncomment this line and update the lock ID if state is locked - Please be careful !!
+# terraform force-unlock 212988ab-9981-fa7e-8d95-53507d5e8c1c
+
+# Initialise Terraform
+terraform init -reconfigure \
+	-backend-config="container_name=${tfStorageContainer}" \
+	-backend-config="storage_account_name=${tfStorageAccount}" \
+	-backend-config="key=infra.${environment}.tfstate" \
+	-backend-config="access_key=${tfStorageKey}" \
+	src/
+
+# The block below for debugging purposes, delete it before delivering to customer
+mkdir -p $HOME/terraconfig
+echo "export ARM_CLIENT_ID=${appId}" > $HOME/terraconfig/.terraconfig
+echo "export ARM_TENANT_ID=${tenant}" >> $HOME/terraconfig/.terraconfig
+echo "export ARM_CLIENT_SECRET=${password}" >> $HOME/terraconfig/.terraconfig
+echo "export ARM_SUBSCRIPTION_ID=${subscriptionId}" >> $HOME/terraconfig/.terraconfig
+
+printf "terraform init -reconfigure \\
+	-backend-config=\"container_name=${tfStorageContainer}\" \\
+	-backend-config=\"storage_account_name=${tfStorageAccount}\" \\
+	-backend-config=\"key=infra.${environment}.tfstate\" \\
+	-backend-config=\"access_key=${tfStorageKey}\" \\
+	${PWD}/src/\n" >> $HOME/terraconfig/.terraconfig
+
+terraform validate src/
+terraform apply src/
