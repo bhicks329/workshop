@@ -1,9 +1,9 @@
 variable "location" {
-  type = "string"
+  type    = "string"
   default = "westeurope"
 }
 
 variable "basename" {
-  type = "string"
-  default = "lloyds-test"
+  type    = "string"
+  default = "ll"
 }

@@ -10,10 +10,6 @@ variable "location" {
   type = "string"
 }
 
-variable "vnet_address_space" {
-  type = "string"
-}
-
 variable "admin_username" {
   type    = "string"
   default = "azureadmin"
@@ -26,7 +22,7 @@ variable "cluster_os_disk_size" {
 
 variable "cluster_node_count" {
   type    = "string"
-  default = 2
+  default = "2"
 }
 
 variable "cluster_node_size" {
@@ -40,5 +36,9 @@ variable "kubernetes_version" {
 }
 
 variable "subscription" {
+  type = "string"
+}
+
+variable "service_address_range" {
   type = "string"
 }
