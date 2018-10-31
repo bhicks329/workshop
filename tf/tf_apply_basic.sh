@@ -5,15 +5,16 @@ create_rand() {
 	 md5 -q -s ${1} | cut -c1-${2}
 }
 
-export baseName=${1}
-export environment=${2}
-export random=$(create_rand ${baseName}${environment} 4)
-export resourceGroup="bootstrap-${baseName}-${environment}"
-export tfStorageAccount="${baseName}${environment}${random}"
-export tfStorageContainer="${baseName}${environment}"
-export vaultName="${baseName}${environment}${random}"
-export location="westeurope"
+clean() {
+    echo $1 | sed 's/[^a-zA-Z0-9]//g' 
+}
 
+export baseName=${1}
+export random=$(create_rand ${baseName} 4)
+export resourceGroup="bootstrap-${baseName}"
+export tfStorageAccount="$(clean ${baseName}${random})"
+export tfStorageContainer="$(clean ${baseName})"
+export location="westeurope"
 
 # Check and display the current subscription
 subscriptionId=$(az account list | jq -r ' .[] | select(.isDefault==true) | .id')
@@ -82,12 +83,12 @@ echo "Initialising TF Backend"
 terraform init -reconfigure \
 	-backend-config="container_name=${tfStorageContainer}" \
 	-backend-config="storage_account_name=${tfStorageAccount}" \
-	-backend-config="key=infra.${environment}.tfstate" \
+	-backend-config="key=infra.${baseName}.tfstate" \
 	-backend-config="access_key=${tfStorageKey}" \
 	src/
 
 echo "Starting TF Validate"
-terraform validate -var "basename=${baseName}" -var "environment=${environment}" src/
+terraform validate -var "basename=${baseName}" src/
 
 echo "Starting TF Apply"
-terraform apply -var "basename=${baseName}" -var "environment=${environment}" src/
+terraform apply -var "basename=${baseName}" src/

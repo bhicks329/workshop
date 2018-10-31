@@ -27,7 +27,7 @@ variable "cluster_node_count" {
 
 variable "cluster_node_size" {
   type    = "string"
-  default = "Standard_DS2_v2"
+  default = "Standard_E2s_v3"
 }
 
 variable "kubernetes_version" {
@@ -49,4 +49,9 @@ variable "service_address_range" {
 
 variable "vnet_address_space" {
   type = "string"
+}
+
+variable "is_mgmt" {
+  type    = "string"
+  default = "0"
 }
