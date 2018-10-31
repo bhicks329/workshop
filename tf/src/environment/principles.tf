@@ -1,9 +1,9 @@
 # Create the Service principle for the AKS Cluster
 resource "azurerm_azuread_application" "aks_cluster" {
- name                       = "aks-${var.basename}-${var.environment}"
- homepage                   = "https://aks-${var.basename}-${var.environment}"
- identifier_uris            = ["https://aks-${var.basename}-${var.environment}"]
- reply_urls                 = ["https://aks-${var.basename}-${var.environment}"]
+ name                       = "aks-${lower(var.basename)}-${lower(var.environment)}-${lower(random_string.aks_cluster_sp_suffix.result)}"
+ homepage                   = "https://aks-${var.basename}-${var.environment}-${lower(random_string.aks_cluster_sp_suffix.result)}"
+ identifier_uris            = ["https://aks-${var.basename}-${var.environment}-${lower(random_string.aks_cluster_sp_suffix.result)}"]
+ reply_urls                 = ["https://aks-${var.basename}-${var.environment}-${lower(random_string.aks_cluster_sp_suffix.result)}"]
  available_to_other_tenants = false
  oauth2_allow_implicit_flow = true
 }
@@ -16,6 +16,10 @@ resource "azurerm_azuread_service_principal_password" "aks_cluster" {
  service_principal_id = "${azurerm_azuread_service_principal.aks_cluster.id}"
  value                = "${random_string.aks_cluster_sp_pass.result}"
  end_date             = "2020-01-01T01:02:03Z"
+}
+resource "random_string" "aks_cluster_sp_suffix" {
+ length  = 4
+ special = false
 }
 
 resource "random_string" "aks_cluster_sp_pass" {

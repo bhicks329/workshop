@@ -2,6 +2,12 @@
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
+        "force_refresh": {
+            "type": "string"
+        },
+        "cluster_name": {
+            "type": "string"
+        },
         "base_name": {
             "type": "string"
         },
@@ -17,10 +23,6 @@
         },
         "service_address_range": {
             "type": "string"
-        },
-        "dns_service_ip": {
-            "type": "string",
-            "defaultValue": "10.0.0.10"
         },
         "docker_bridge_cidr": {
             "type": "string",
@@ -61,6 +63,16 @@
             "metadata": {
                 "description": "The version of Kubernetes."
             }
+        },
+        "cluster_subnet_id": {
+            "type": "string"
+        },
+        "dns_service_ip": {
+            "type": "string"
+        },
+        "network_plugin": {
+            "type": "string",
+            "defaultValue": "Kubenet"
         }
     },
     "resources": [
@@ -68,7 +80,7 @@
             "apiVersion": "2018-03-31",
             "type": "Microsoft.ContainerService/managedClusters",
             "location": "[resourcegroup().location]",
-            "name": "[concat('aks-', parameters('base_name'), '-', parameters('environment'))]",
+            "name": "[parameters('cluster_name')]",
             "properties": {
                 "kubernetesVersion": "[parameters('kubernetes_version')]",
                 "dnsPrefix": "[concat('aks-', parameters('base_name'), '-', parameters('environment'))]",
@@ -78,6 +90,7 @@
                         "osDiskSizeGB": "[int(parameters('os_disk_size'))]",
                         "count": "[int(parameters('agent_count'))]",
                         "vmSize": "[parameters('agent_vm_size')]",
+                        "vnetSubnetID": "[parameters('cluster_subnet_id')]",
                         "osType": "Linux",
                         "storageProfile": "ManagedDisks"
                     }
@@ -98,6 +111,7 @@
                 },
                 "enableRBAC": true,
                 "networkProfile": {
+                    "networkPlugin": "[parameters('network_plugin')]",
                     "podCidr": "[parameters('pod_cidr')]",
                     "serviceCidr": "[parameters('service_address_range')]",
                     "dnsServiceIP": "[parameters('dns_service_ip')]",
@@ -105,5 +119,11 @@
                 }
             }
         }
-    ]
+    ],
+    "outputs": {
+        "cluster_name": {
+            "type": "string",
+            "value": "[parameters('cluster_name')]"
+        }
+    }
 }

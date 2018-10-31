@@ -5,5 +5,4 @@ variable "location" {
 
 variable "basename" {
   type    = "string"
-  default = "ll"
 }

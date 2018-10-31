@@ -39,6 +39,14 @@ variable "subscription" {
   type = "string"
 }
 
+variable "cluster_subnet_range" {
+  type = "string"
+}
+
 variable "service_address_range" {
+  type = "string"
+}
+
+variable "vnet_address_space" {
   type = "string"
 }

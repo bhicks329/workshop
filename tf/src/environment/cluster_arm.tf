@@ -9,6 +9,7 @@ resource "azurerm_template_deployment" "aks_cluster_arm" {
   parameters {
     "base_name"             = "${lower(var.basename)}"
     "environment"           = "${lower(var.environment)}"
+    "cluster_name"          = "aks-${lower(var.basename)}-${lower(var.environment)}"
     "os_disk_size"          = "${var.cluster_os_disk_size}"
     "agent_count"           = "${var.cluster_node_count}"
     "agent_vm_size"         = "${var.cluster_node_size}"
@@ -18,6 +19,9 @@ resource "azurerm_template_deployment" "aks_cluster_arm" {
     "sp_client_secret"      = "${random_string.aks_cluster_sp_pass.result}"
     "kubernetes_version"    = "${var.kubernetes_version}"
     "service_address_range" = "${var.service_address_range}"
+    "cluster_subnet_id"     = "${azurerm_subnet.cluster_subnet.id}"
+    "dns_service_ip"        = "${cidrhost(var.cluster_subnet_range, 11)}"
+    "force_refresh"         = "${timestamp()}"
   }
 
   deployment_mode = "Incremental"
@@ -26,4 +30,8 @@ resource "azurerm_template_deployment" "aks_cluster_arm" {
 resource "tls_private_key" "cluster_ssh" {
   algorithm = "RSA"
   rsa_bits  = "2048"
+}
+
+output "cluster_name" {
+  value = "${azurerm_template_deployment.aks_cluster_arm.outputs["cluster_name"]}"
 }
