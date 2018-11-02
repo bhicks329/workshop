@@ -24,9 +24,9 @@ echo
 # Check with the user we are in the right one
 echo "Running in subscription: ${subscriptionName}"
 echo "Subscription ID: ${subscriptionId}"
-read -p "Are you sure? " -n 1 -r
+read -p "Are you sure? " 
 echo # (optional) move to a new line
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+if [[ ! $REPLY =~ ^'yes'$ ]]; then
 	[[ "$0" == "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
 fi
 echo

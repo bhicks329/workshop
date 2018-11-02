@@ -21,7 +21,9 @@ resource "azurerm_template_deployment" "aks_cluster_arm" {
     "service_address_range" = "${var.service_address_range}"
     "cluster_subnet_id"     = "${azurerm_subnet.cluster_subnet.id}"
     "dns_service_ip"        = "${cidrhost(var.cluster_subnet_range, 11)}"
-    "force_refresh"         = "${timestamp()}"
+
+  # The following value is ignored by the arm template but can be used to force a re-run.
+    "force_refresh"         = "1"
   }
 
   deployment_mode = "Incremental"
