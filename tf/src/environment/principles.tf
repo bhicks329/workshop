@@ -29,13 +29,13 @@ resource "random_string" "aks_cluster_sp_pass" {
 }
 
 resource "azurerm_user_assigned_identity" "cluster_msi" {
-  resource_group_name = "${azurerm_resource_group.env_resource_group.name}"
+  resource_group_name = "${data.azurerm_kubernetes_cluster.cluster.node_resource_group}"
   location            = "${azurerm_resource_group.env_resource_group.location}"
   name                = "cluster-msi"
 }
 
 resource "azurerm_role_assignment" "cluster_msi_reader" {
-  scope                = "${azurerm_resource_group.env_resource_group.id}"
+  scope                = "${data.azurerm_resource_group.cluster_node_group.id}"
   role_definition_name = "Reader"
   principal_id         = "${azurerm_user_assigned_identity.cluster_msi.principal_id}"
 }
@@ -50,9 +50,19 @@ data "template_file" "msi_identity_binding_template" {
   template = "${file("${path.module}/k8s/templates/msi-identity.tpl")}"
 
   vars {
-    client_id      = "${azurerm_azuread_service_principal.aks_cluster.id}"
+    client_id      = "${azurerm_user_assigned_identity.cluster_msi.client_id}"
     msi_id         = "${azurerm_user_assigned_identity.cluster_msi.id}"
     selector_label = "aad_auth"
     binding_name   = "msi-id"
   }
+  depends_on = ["azurerm_user_assigned_identity.cluster_msi"]
+}
+
+data "azurerm_kubernetes_cluster" "cluster" {
+  name                = "${azurerm_template_deployment.aks_cluster_arm.outputs["cluster_name"]}"
+  resource_group_name = "${azurerm_resource_group.env_resource_group.name}"
+}
+
+data "azurerm_resource_group" "cluster_node_group" {
+    name = "${data.azurerm_kubernetes_cluster.cluster.node_resource_group}" 
 }

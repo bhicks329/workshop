@@ -17,12 +17,9 @@
         "os_disk_size": {
             "type": "string"
         },
-        "pod_cidr": {
+        "service_address_range": {
             "type": "string",
             "defaultValue": "10.0.0.0/16"
-        },
-        "service_address_range": {
-            "type": "string"
         },
         "docker_bridge_cidr": {
             "type": "string",
@@ -68,7 +65,8 @@
             "type": "string"
         },
         "dns_service_ip": {
-            "type": "string"
+            "type": "string",
+            "defaultValue": "10.0.0.10"
         },
         "network_plugin": {
             "type": "string",
@@ -112,7 +110,6 @@
                 "enableRBAC": true,
                 "networkProfile": {
                     "networkPlugin": "[parameters('network_plugin')]",
-                    "podCidr": "[parameters('pod_cidr')]",
                     "serviceCidr": "[parameters('service_address_range')]",
                     "dnsServiceIP": "[parameters('dns_service_ip')]",
                     "dockerBridgeCidr": "[parameters('docker_bridge_cidr')]"

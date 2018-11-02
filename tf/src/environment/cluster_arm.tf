@@ -18,9 +18,7 @@ resource "azurerm_template_deployment" "aks_cluster_arm" {
     "sp_client_id"          = "${azurerm_azuread_application.aks_cluster.application_id}"
     "sp_client_secret"      = "${random_string.aks_cluster_sp_pass.result}"
     "kubernetes_version"    = "${var.kubernetes_version}"
-    "service_address_range" = "${var.service_address_range}"
     "cluster_subnet_id"     = "${azurerm_subnet.cluster_subnet.id}"
-    "dns_service_ip"        = "${cidrhost(var.cluster_subnet_range, 11)}"
 
   # The following value is ignored by the arm template but can be used to force a re-run.
     "force_refresh"         = "1"
