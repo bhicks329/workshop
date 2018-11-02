@@ -11,8 +11,8 @@
 
 # resource "azurerm_key_vault" "vault" {
 #   name                        = "${format("%.20s", local.vault_name)}"
-#   location                    = "${azurerm_resource_group.aks_resource_group.location}"
-#   resource_group_name         = "${azurerm_resource_group.aks_resource_group.name}"
+#   location                    = "${azurerm_resource_group.env_resource_group.location}"
+#   resource_group_name         = "${azurerm_resource_group.env_resource_group.name}"
 #   enabled_for_disk_encryption = true
 #   enabled_for_deployment      = true
 

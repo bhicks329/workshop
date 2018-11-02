@@ -1,7 +1,7 @@
 resource "azurerm_template_deployment" "aks_cluster_arm" {
   name                = "aks_arm_deployment"
   provider            = "azurerm"
-  resource_group_name = "${azurerm_resource_group.aks_resource_group.name}"
+  resource_group_name = "${azurerm_resource_group.env_resource_group.name}"
 
   template_body = "${file("${path.module}/templates/aks_deploy.json")}"
 

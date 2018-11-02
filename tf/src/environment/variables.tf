@@ -55,3 +55,8 @@ variable "is_mgmt" {
   type    = "string"
   default = "0"
 }
+
+variable "root_dns_zone" {
+  type = "string"
+  default = "demo.sequenced.net"
+}
