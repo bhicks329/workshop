@@ -1,11 +1,13 @@
-# lbg-aks-terraform-jenkins
+To build the environment you need to have the following installed:
 
-To build the tf bootstrap, ensure you are logged into the correct account with the az command line.
+Helm
+AZ Cli
+JQ
+Terraform
 
-Current naming convention will have a basename and an environment name - EG baseline / (test|dev|production)
+Ensure you are logged into the correct subscription  with `az login`
 
-To build the initial statefile store and vault, run tf_bootstrap.sh with the basename and environment
+From the tf directory - Run `tf_apply_basic.sh ENV_NAME`
 
-tf_bootstrap baseline test
+For example - tf_apply_basic.sh project-1
 
-This will check and create (if it doesn't exist) a storage account, vault and a service principle for TF. The credentials for this SP will be stored in the vault.
