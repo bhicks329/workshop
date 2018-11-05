@@ -1,0 +1,126 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "force_refresh": {
+            "type": "string"
+        },
+        "cluster_name": {
+            "type": "string"
+        },
+        "base_name": {
+            "type": "string"
+        },
+        "environment": {
+            "type": "string"
+        },
+        "os_disk_size": {
+            "type": "string"
+        },
+        "service_address_range": {
+            "type": "string",
+            "defaultValue": "10.0.0.0/16"
+        },
+        "docker_bridge_cidr": {
+            "type": "string",
+            "defaultValue": "172.17.0.1/16"
+        },
+        "agent_count": {
+            "type": "string"
+        },
+        "agent_vm_size": {
+            "type": "string"
+        },
+        "linux_admin_username": {
+            "type": "string",
+            "metadata": {
+                "description": "User name for the Linux Virtual Machines."
+            }
+        },
+        "ssh_RSA_public_key": {
+            "type": "string",
+            "metadata": {
+                "description": "Configure all linux machines with the SSH RSA public key string. Your key should include three parts, for example 'ssh-rsa AAAAB...snip...UcyupgH azureuser@linuxvm'"
+            }
+        },
+        "sp_client_id": {
+            "metadata": {
+                "description": "Client ID (used by cloudprovider)"
+            },
+            "type": "securestring"
+        },
+        "sp_client_secret": {
+            "metadata": {
+                "description": "The Service Principal Client Secret."
+            },
+            "type": "securestring"
+        },
+        "kubernetes_version": {
+            "type": "string",
+            "metadata": {
+                "description": "The version of Kubernetes."
+            }
+        },
+        "cluster_subnet_id": {
+            "type": "string"
+        },
+        "dns_service_ip": {
+            "type": "string",
+            "defaultValue": "10.0.0.10"
+        },
+        "network_plugin": {
+            "type": "string",
+            "defaultValue": "Kubenet"
+        }
+    },
+    "resources": [
+        {
+            "apiVersion": "2018-03-31",
+            "type": "Microsoft.ContainerService/managedClusters",
+            "location": "[resourcegroup().location]",
+            "name": "[parameters('cluster_name')]",
+            "properties": {
+                "kubernetesVersion": "[parameters('kubernetes_version')]",
+                "dnsPrefix": "[concat('aks-', parameters('base_name'), '-', parameters('environment'))]",
+                "agentPoolProfiles": [
+                    {
+                        "name": "agentpool",
+                        "osDiskSizeGB": "[int(parameters('os_disk_size'))]",
+                        "count": "[int(parameters('agent_count'))]",
+                        "vmSize": "[parameters('agent_vm_size')]",
+                        "vnetSubnetID": "[parameters('cluster_subnet_id')]",
+                        "osType": "Linux",
+                        "storageProfile": "ManagedDisks"
+                    }
+                ],
+                "linuxProfile": {
+                    "adminUsername": "[parameters('linux_admin_username')]",
+                    "ssh": {
+                        "publicKeys": [
+                            {
+                                "keyData": "[parameters('ssh_RSA_public_key')]"
+                            }
+                        ]
+                    }
+                },
+                "servicePrincipalProfile": {
+                    "clientId": "[parameters('sp_client_id')]",
+                    "secret": "[parameters('sp_client_secret')]"
+                },
+                "enableRBAC": true,
+                "networkProfile": {
+                    "networkPlugin": "[parameters('network_plugin')]",
+                    "serviceCidr": "[parameters('service_address_range')]",
+                    "dnsServiceIP": "[parameters('dns_service_ip')]",
+                    "dockerBridgeCidr": "[parameters('docker_bridge_cidr')]"
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "cluster_name": {
+            "type": "string",
+            "value": "[parameters('cluster_name')]"
+        }
+    }
+}

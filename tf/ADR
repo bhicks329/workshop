@@ -1,0 +1,2 @@
+1) Pipeline tasks will be run as containers wherever possible. This is to allow for portability between different CI/CD toolsets.
+2) Initial pipline will be created in Concourse with a view that we may need to utilise Jenkins.
