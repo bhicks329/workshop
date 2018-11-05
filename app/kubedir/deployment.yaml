@@ -1,0 +1,21 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  namespace: default
+  name: demo-cicd
+  labels:
+    app: demo-cicd
+spec:
+  replicas: 3
+  revisionHistoryLimit: 2
+  template:
+    metadata:
+      namespace: default
+      labels:
+        app: demo-cicd
+    spec:
+      containers:
+        - name: demo-cicd
+          image: mustafaatakan/demo-cicd:latest
+          imagePullPolicy: Always

@@ -25,3 +25,34 @@ resource "null_resource" "msi_template" {
 
   depends_on = ["azurerm_template_deployment.aks_cluster_arm"]
 }
+
+
+esource "null_resource" "init_concourse" {
+  count = "${var.is_mgmt}"
+
+  provisioner "local-exec" {
+    command = <<EOT
+      set -e
+      helm install --name lbgcc --namespace lbg stable/concourse
+      kubectl get pods --all-namespaces
+      echo "Sleeping 150 seconds..."
+      sleep 150
+      kubectl get pods --all-namespaces
+      export POD_NAME=$(kubectl get pods --namespace lbg -l "app=lbgcc-web" -o jsonpath="{.items[0].metadata.name}")
+      echo "Visit http://127.0.0.1:8080 to use Concourse"
+      kubectl port-forward --namespace lbg $POD_NAME 8080
+    EOT
+  } 
+
+  depends_on = ["null_resource.msi_template"]
+}
+
+
+helm install --name lbgcc --namespace lbg stable/concourse
+kubectl get pods --all-namespaces
+echo "Sleeping 150 seconds..."
+sleep 150
+kubectl get pods --all-namespaces
+export POD_NAME=$(kubectl get pods --namespace lbg -l "app=lbgcc-web" -o jsonpath="{.items[0].metadata.name}")
+echo "Visit http://127.0.0.1:8080 to use Concourse"
+kubectl port-forward --namespace lbg $POD_NAME 8080

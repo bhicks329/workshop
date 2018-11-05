@@ -1,0 +1,52 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  namespace: default
+  name: demo-cicd
+  labels:
+    app: demo-cicd
+spec:
+  replicas: 3
+  revisionHistoryLimit: 2
+  template:
+    metadata:
+      namespace: default
+      labels:
+        app: demo-cicd
+    spec:
+      containers:
+        - name: demo-cicd
+          image: mustafaatakan/demo-cicd:latest
+          imagePullPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: default
+  name: demo-cicd-svc
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    app: demo-cicd
+  type: LoadBalancer
+#---
+#apiVersion: extensions/v1beta1
+#kind: Ingress
+#metadata:
+#  namespace: default
+#  name: demo-cicd
+#  annotations:
+#    kubernetes.io/ingress.class: traefik
+#spec:
+#  rules:
+#    - host: demo-cicd.osones.com
+#      http:
+#        paths:
+#          - backend:
+#              serviceName: demo-cicd-svc
+#              servicePort: 80
