@@ -29,5 +29,15 @@ data "template_file" "pipeline_credentials" {
     baseregistry-url      = "${azurerm_container_registry.acr.login_server}"
     baseregistry-name     = "${azurerm_container_registry.acr.name}"
     kubeconfig            = "${data.azurerm_kubernetes_cluster.cluster.kube_config_raw}"
+
+  }
+}
+data "template_file" "app_setup" {
+  template = "${file("${path.module}/ci/templates/pipeline.yml")}"
+
+  vars {
+    app_name              = "${var.app_name}"
+    app_url               = "${var.app_url}"
+    branch_name           = "${var.branch_name}"
   }
 }

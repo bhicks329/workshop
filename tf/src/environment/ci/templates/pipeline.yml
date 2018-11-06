@@ -12,14 +12,12 @@ resource_types:
       repository: zlabjp/kubernetes-resource
       tag: "1.12"
 
-
 resources:
-  - name: hello_hapi
+  - name: ${app_name}
     type: git
     source: &repo-source
-      uri: https://github.com/bhicks329/workshop-app.git
-      branch: master
-
+      uri: ${app_url}
+      branch: ${branch_name}
 
   - name: dependency-cache
     type: npm-cache
@@ -52,25 +50,25 @@ resources:
 jobs:
   - name: Install_dependencies
     plan:
-      - get: hello_hapi
+      - get: ${app_name}
         trigger: true
       - get: dependency-cache
 
   - name: Run_tests
     plan:
-      - get: hello_hapi
+      - get: ${app_name}
         trigger: true
         passed: [Install_dependencies]
       - get: dependency-cache
         passed: [Install_dependencies]
       - task: run the test suite
-        file: hello_hapi/ci/tasks/run_tests.yml
+        file: ci/tasks/run_tests.yml
 
 #   - name: Security_scan
 #     public: true
 #     plan:
 #       - aggregate:
-#         - get: hello_hapi
+#         - get: ${app_name}
 #           trigger: true
 #           passed: [Run_tests]
 #         - get: dependency-cache
@@ -79,7 +77,7 @@ jobs:
 #           params: {save: true}
 #       - task: run security scan
 #         privileged: true
-# #        file: hello_hapi/ci/tasks/run_security_scan.yml
+# #        file: ci/tasks/run_security_scan.yml
 #         config:
 #           platform: linux
 #           image_resource:
@@ -88,7 +86,7 @@ jobs:
 #               repository: amidos/dcind
 #           inputs:
 #             - name: scannercli
-#             - name: hello_hapi
+#             - name: ${app_name}
 #           run:
 #             path: sh
 #             args:
@@ -109,18 +107,18 @@ jobs:
   - name: Docker_Push
     public: false
     plan:
-      - get: hello_hapi
+      - get: ${app_name}
         trigger: true
         # passed: [Security_scan]
       - get: dependency-cache
         # passed: [Security_scan]
       - put: appRegistry
         params:
-          build: hello_hapi
+          build: ${app_name}
 
   # - name: ChartRepo_Push
   #   plan:
-  #     - get: hello_hapi
+  #     - get: ${app_name}
   #       trigger: true
   #       passed: [Docker_Push]
   #     - task: run security scan
@@ -132,7 +130,7 @@ jobs:
   #           source:
   #             repository: lachlanevenson/k8s-helm
   #         inputs:
-  #           - name: hello_hapi
+  #           - name: ${app_name}
   #         run:
   #           path: sh
   #           args:
@@ -149,13 +147,13 @@ jobs:
   - name: Deploy_Application
     public: false
     plan:
-      - get: hello_hapi
+      - get: ${app_name}
         trigger: true
         passed:
           - "Docker_Push"
       - put: k8s
         params:
 #          kubectl: delete pods -l app=demo-cicd
-          kubectl: apply -f hello_hapi/kubeResource.yml
+          kubectl: apply -f ${app_name}/kubeResource.yml
           wait_until_ready: 300
 #          kubeconfig_file: ./.kube/config

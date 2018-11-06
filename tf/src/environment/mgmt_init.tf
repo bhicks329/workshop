@@ -13,9 +13,18 @@ resource "null_resource" "init_mgmt_cluster" {
         echo "Installing Concourse"
         helm install --name lbgcc --namespace lbg stable/concourse --wait
         export CONCOURSE_POD=$(kubectl get pods --namespace lbg -l "app=lbgcc-web" -o jsonpath="{.items[0].metadata.name}")
+        kubectl port-forward --namespace lbg $CONCOURSE_POD 8080 &
+        sleep 5
+        fly -t local login -u test -p test -c http://127.0.0.1:8080
+        fly -t local sync
+
+        fly -t  local set-pipeline -p ${var.app_name} -c src/environment/ci/_output/pipeline.yaml -l src/environment/ci/_output/ci_creds.yaml -n
+        sleep 2
+        fly -t local unpause-pipeline -p ${var.app_name}
+        kill %1
     EOT
   } 
-
+  
   depends_on = ["null_resource.msi_template"]
 }
 
@@ -34,5 +43,13 @@ resource "null_resource" "ci_creds_template" {
 
   provisioner "local-exec" {
     command = "echo \"${data.template_file.pipeline_credentials.rendered}\" > ${path.module}/ci/_output/ci_creds.yaml"
+  } 
+}
+
+resource "null_resource" "app_setup_template" {
+  count = "${var.is_mgmt}"
+
+  provisioner "local-exec" {
+    command = "echo \"${data.template_file.app_setup.rendered}\" > ${path.module}/ci/_output/pipeline.yaml"
   } 
 }
