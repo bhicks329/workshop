@@ -18,19 +18,22 @@ resources:
     type: git
     source: &repo-source
       uri: https://github.com/bhicks329/workshop.git
+      paths:
+      - /app
       branch: master
+
 
   - name: dependency-cache
     type: npm-cache
     source:
       <<: *repo-source
       paths:
-        - package.json
+        - /app/package.json
 
   - name: appRegistry
     type: docker-image
     source:
-      repository: ((baseregistry))/demo-cicd
+      repository: ((baseregistry-url))
       username: ((baseregistry-username))
       password: ((baseregistry-passwd))
 

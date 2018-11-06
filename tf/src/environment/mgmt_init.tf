@@ -8,8 +8,11 @@ resource "null_resource" "init_mgmt_cluster" {
         kubectl apply -f ${path.module}/k8s/helm-rbac.yaml
         kubectl apply -f ${path.module}/k8s/msi-rbac.yaml
         kubectl apply -f ${path.module}/k8s/_output/msi_identity_binding.yaml
+        echo "Installing Helm into the Cluster"
         helm init --service-account tiller --wait
-        helm install stable/concourse
+        echo "Installing Concourse"
+        helm install --name lbgcc --namespace lbg stable/concourse --wait
+        export CONCOURSE_POD=$(kubectl get pods --namespace lbg -l "app=lbgcc-web" -o jsonpath="{.items[0].metadata.name}")
     EOT
   } 
 

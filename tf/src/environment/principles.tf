@@ -36,7 +36,7 @@ resource "azurerm_user_assigned_identity" "cluster_msi" {
 
 resource "null_resource" "sleep_wait_msi" {
   provisioner "local-exec" {
-    command = "sleep 15"
+    command = "sleep 20"
   }
 
   depends_on = ["azurerm_user_assigned_identity.cluster_msi"]
