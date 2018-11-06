@@ -17,9 +17,7 @@ resources:
   - name: hello_hapi
     type: git
     source: &repo-source
-      uri: https://github.com/bhicks329/workshop.git
-      paths:
-      - /app
+      uri: https://github.com/bhicks329/workshop-app.git
       branch: master
 
 
@@ -28,7 +26,7 @@ resources:
     source:
       <<: *repo-source
       paths:
-        - /app/package.json
+        - package.json
 
   - name: appRegistry
     type: docker-image
