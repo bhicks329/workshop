@@ -46,17 +46,7 @@ resource "azurerm_role_assignment" "cluster_sp_MSI_operator" {
   principal_id         = "${azurerm_azuread_service_principal.aks_cluster.id}"
 }
 
-data "template_file" "msi_identity_binding_template" {
-  template = "${file("${path.module}/k8s/templates/msi-identity.tpl")}"
 
-  vars {
-    client_id      = "${azurerm_user_assigned_identity.cluster_msi.client_id}"
-    msi_id         = "${azurerm_user_assigned_identity.cluster_msi.id}"
-    selector_label = "aad_auth"
-    binding_name   = "msi-id"
-  }
-  depends_on = ["azurerm_user_assigned_identity.cluster_msi"]
-}
 
 data "azurerm_kubernetes_cluster" "cluster" {
   name                = "${azurerm_template_deployment.aks_cluster_arm.outputs["cluster_name"]}"

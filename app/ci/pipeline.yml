@@ -17,7 +17,7 @@ resources:
   - name: hello_hapi
     type: git
     source: &repo-source
-      uri: https://github.com/bhicks329/workshop
+      uri: https://github.com/bhicks329/workshop.git
       branch: master
 
   - name: dependency-cache
@@ -30,22 +30,22 @@ resources:
   - name: appRegistry
     type: docker-image
     source:
-      repository: mustafaatakan/demo-cicd
-      username: ((mustafaatakan-username))
-      password: ((mustafaatakan-passwd))
+      repository: ((baseregistry))/demo-cicd
+      username: ((baseregistry-username))
+      password: ((baseregistry-passwd))
 
   - name: k8s
     type: kubernetes
     source:
       kubeconfig: ((k8s_server))
 
-  - name: scannercli
-    type: docker-image
-    source:
-      repository: aquasec/scanner-cli
-      tag: 3.2
-      username: ((aquasec-username))
-      password: ((aquasec-passwd))
+  # - name: scannercli
+  #   type: docker-image
+  #   source:
+  #     repository: aquasec/scanner-cli
+  #     tag: 3.2
+  #     username: ((aquasec-username))
+  #     password: ((aquasec-passwd))
 
 
 jobs:
@@ -65,44 +65,44 @@ jobs:
       - task: run the test suite
         file: hello_hapi/ci/tasks/run_tests.yml
 
-  - name: Security_scan
-    public: true
-    plan:
-      - aggregate:
-        - get: hello_hapi
-          trigger: true
-          passed: [Run_tests]
-        - get: dependency-cache
-          passed: [Run_tests]
-        - get: scannercli
-          params: {save: true}
-      - task: run security scan
-        privileged: true
-#        file: hello_hapi/ci/tasks/run_security_scan.yml
-        config:
-          platform: linux
-          image_resource:
-            type: docker-image
-            source:
-              repository: amidos/dcind
-          inputs:
-            - name: scannercli
-            - name: hello_hapi
-          run:
-            path: sh
-            args:
-              - -exc
-              - |
-                source /docker-lib.sh
-                start_docker
+#   - name: Security_scan
+#     public: true
+#     plan:
+#       - aggregate:
+#         - get: hello_hapi
+#           trigger: true
+#           passed: [Run_tests]
+#         - get: dependency-cache
+#           passed: [Run_tests]
+#         - get: scannercli
+#           params: {save: true}
+#       - task: run security scan
+#         privileged: true
+# #        file: hello_hapi/ci/tasks/run_security_scan.yml
+#         config:
+#           platform: linux
+#           image_resource:
+#             type: docker-image
+#             source:
+#               repository: amidos/dcind
+#           inputs:
+#             - name: scannercli
+#             - name: hello_hapi
+#           run:
+#             path: sh
+#             args:
+#               - -exc
+#               - |
+#                 source /docker-lib.sh
+#                 start_docker
 
-                docker load -i scannercli/image
-                docker tag "$(cat scannercli/image-id)" "$(cat scannercli/repository):$(cat scannercli/tag)"
+#                 docker load -i scannercli/image
+#                 docker tag "$(cat scannercli/image-id)" "$(cat scannercli/repository):$(cat scannercli/tag)"
 
-                cd hello_hapi
-                docker build -t demo-cicd:tmp .
+#                 cd hello_hapi
+#                 docker build -t demo-cicd:tmp .
 
-                docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/scanner-cli:3.2 scan -H http://aqua-web.default:8080 -U ((scan-username)) -P ((scan-passwd)) --local demo-cicd:tmp
+#                 docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/scanner-cli:3.2 scan -H http://aqua-web.default:8080 -U ((scan-username)) -P ((scan-passwd)) --local demo-cicd:tmp
                
 
   - name: Docker_Push
@@ -110,40 +110,40 @@ jobs:
     plan:
       - get: hello_hapi
         trigger: true
-        passed: [Security_scan]
+        # passed: [Security_scan]
       - get: dependency-cache
-        passed: [Security_scan]
+        # passed: [Security_scan]
       - put: appRegistry
         params:
           build: hello_hapi
 
-  - name: ChartRepo_Push
-    plan:
-      - get: hello_hapi
-        trigger: true
-        passed: [Docker_Push]
-      - task: run security scan
-        privileged: true
-        config:
-          platform: linux
-          image_resource:
-            type: docker-image
-            source:
-              repository: lachlanevenson/k8s-helm
-          inputs:
-            - name: hello_hapi
-          run:
-            path: sh
-            args:
-              - -exc
-              - |
-                cd hello_hapi
-                helm create hello_hapi_helmpkg
-                cp kubedir/service.yaml hello_hapi_helmpkg/templates
-                cp kubedir/deployment.yaml hello_hapi_helmpkg/templates
-                rm hello_hapi_helmpkg/templates/ingress.yaml
-                helm package hello_hapi_helmpkg
-                curl --data-binary "@hello_hapi_helmpkg-0.1.0.tgz" http://52.151.72.37:8090/api/charts
+  # - name: ChartRepo_Push
+  #   plan:
+  #     - get: hello_hapi
+  #       trigger: true
+  #       passed: [Docker_Push]
+  #     - task: run security scan
+  #       privileged: true
+  #       config:
+  #         platform: linux
+  #         image_resource:
+  #           type: docker-image
+  #           source:
+  #             repository: lachlanevenson/k8s-helm
+  #         inputs:
+  #           - name: hello_hapi
+  #         run:
+  #           path: sh
+  #           args:
+  #             - -exc
+  #             - |
+  #               cd hello_hapi
+  #               helm create hello_hapi_helmpkg
+  #               cp kubedir/service.yaml hello_hapi_helmpkg/templates
+  #               cp kubedir/deployment.yaml hello_hapi_helmpkg/templates
+  #               rm hello_hapi_helmpkg/templates/ingress.yaml
+  #               helm package hello_hapi_helmpkg
+  #               curl --data-binary "@hello_hapi_helmpkg-0.1.0.tgz" http://52.151.72.37:8090/api/charts
 
   - name: Deploy_Application
     public: false

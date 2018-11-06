@@ -12,3 +12,11 @@ resource "azurerm_subnet" "cluster_subnet" {
   virtual_network_name      = "${azurerm_virtual_network.cluster_virtual_network.name}"
   service_endpoints         = ["Microsoft.Storage", "Microsoft.Sql", "Microsoft.KeyVault"]
 }
+
+
+resource "null_resource" "fix_routetable" {
+  provisioner "local-exec" {
+    command = "az network vnet subnet update -n ${azurerm_subnet.cluster_subnet.name} -g ${azurerm_resource_group.env_resource_group.name} --vnet-name ${azurerm_virtual_network.cluster_virtual_network.name} --route-table $(az resource list --resource-group ${data.azurerm_kubernetes_cluster.cluster.node_resource_group} --resource-type Microsoft.Network/routeTables --query '[].{ID:id}' -o tsv)"
+  }
+  depends_on = ["azurerm_template_deployment.aks_cluster_arm"]
+}
