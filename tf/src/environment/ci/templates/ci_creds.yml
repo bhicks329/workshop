@@ -1,6 +1,6 @@
 baseregistry-username: ${baseregistry-username}
 baseregistry-passwd: ${baseregistry-password}
-baseregistry-url: ${baseregistry-url}:443
+baseregistry-url: ${baseregistry-url}:443/concourse
 
 k8s_server:
  ${kubeconfig}
