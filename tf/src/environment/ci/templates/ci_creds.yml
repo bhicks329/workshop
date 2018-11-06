@@ -3,4 +3,3 @@ baseregistry-passwd: ${baseregistry-password}
 baseregistry-url: ${baseregistry-url}:443/${baseregistry-name}
 
 k8s_server:
- ${kubeconfig}

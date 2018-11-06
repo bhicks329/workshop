@@ -21,41 +21,39 @@ resource "azurerm_key_vault" "vault" {
   }
 
   tenant_id = "${data.azurerm_client_config.current.tenant_id}"
+}
 
-  # Policy for the Service Principial creating the key vault
-  # Review access policies for Service Principial
-  access_policy {
-    tenant_id = "${data.azurerm_client_config.current.tenant_id}"
-    object_id = "${azurerm_user_assigned_identity.cluster_msi.principal_id}"
+resource "azurerm_key_vault_access_policy" "msi_access" {
+  vault_name          = "${azurerm_key_vault.vault.name}"
+  resource_group_name = "${azurerm_key_vault.vault.resource_group_name}"
 
-    key_permissions = [
-      "backup",
-      "create",
-      "decrypt",
-      "delete",
-      "encrypt",
-      "get",
-      "import",
-      "list",
-      "purge",
-      "recover",
-      "restore",
-      "sign",
-      "unwrapKey",
-      "update",
-      "verify",
-      "wrapKey",
-    ]
+  tenant_id = "${data.azurerm_client_config.current.tenant_id}"
+  object_id = "${azurerm_user_assigned_identity.cluster_msi.principal_id}"
 
-    secret_permissions = [
-      "backup",
-      "delete",
-      "get",
-      "list",
-      "purge",
-      "recover",
-      "restore",
-      "set",
-    ]
-  }
+  key_permissions = []
+
+  secret_permissions = [
+    "get",
+  ]
+}
+
+resource "azurerm_key_vault_access_policy" "user_access" {
+  vault_name          = "${azurerm_key_vault.vault.name}"
+  resource_group_name = "${azurerm_key_vault.vault.resource_group_name}"
+
+  tenant_id = "${data.azurerm_client_config.current.tenant_id}"
+  object_id = "${data.azurerm_client_config.current.client_id}"
+
+  key_permissions = []
+
+  secret_permissions = [
+    "backup",
+    "delete",
+    "get",
+    "list",
+    "purge",
+    "recover",
+    "restore",
+    "set",
+  ]
 }

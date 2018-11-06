@@ -8,7 +8,7 @@ resource "azurerm_cosmosdb_account" "cosmos" {
   location            = "${azurerm_resource_group.env_resource_group.location}"
   resource_group_name = "${azurerm_resource_group.env_resource_group.name}"
   offer_type          = "Standard"
-  kind                = "GlobalDocumentDB"
+  kind                = "MongoDB"
 
   enable_automatic_failover = false
 
