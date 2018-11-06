@@ -1,0 +1,16 @@
+apiVersion: aadpodidentity.k8s.io/v1
+kind: AzureIdentity
+metadata:
+ name: msi-id
+spec:
+ type: 0
+ ResourceID: /subscriptions/4dacb80e-e4a5-4612-a7f0-a5ab624818a6/resourcegroups/MC_irinawar-mgmt_aks-irinawar-mgmt_westeurope/providers/Microsoft.ManagedIdentity/userAssignedIdentities/cluster-msi
+ ClientID: b12e03f0-742f-45b1-8f5d-0ed721857e04
+---
+apiVersion: aadpodidentity.k8s.io/v1
+kind: AzureIdentityBinding
+metadata:
+ name: msi-azure-identity-binding
+spec:
+ AzureIdentity: msi-id
+ Selector: aad_auth
