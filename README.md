@@ -11,4 +11,3 @@ From the tf directory - Run `tf_apply_basic.sh ENV_NAME`
 
 For example - tf_apply_basic.sh project-1
 
-

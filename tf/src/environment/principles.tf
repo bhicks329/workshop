@@ -12,6 +12,13 @@ resource "azurerm_azuread_service_principal" "aks_cluster" {
   application_id = "${azurerm_azuread_application.aks_cluster.application_id}"
 }
 
+resource "azurerm_role_assignment" "aks_cluster_sp" {
+  scope                = "${azurerm_resource_group.env_resource_group.id}"
+  role_definition_name = "Contributor"
+  principal_id         = "${azurerm_azuread_service_principal.aks_cluster.id}"
+  depends_on           = ["null_resource.sleep_wait_msi"]
+}
+
 resource "azurerm_azuread_service_principal_password" "aks_cluster" {
   service_principal_id = "${azurerm_azuread_service_principal.aks_cluster.id}"
   value                = "${random_string.aks_cluster_sp_pass.result}"
