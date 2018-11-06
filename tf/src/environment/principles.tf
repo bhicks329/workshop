@@ -34,25 +34,24 @@ resource "azurerm_user_assigned_identity" "cluster_msi" {
   name                = "cluster-msi"
 }
 
+resource "null_resource" "sleep_wait_msi" {
+  provisioner "local-exec" {
+    command = "sleep 15"
+  }
+
+  depends_on = ["azurerm_user_assigned_identity.cluster_msi"]
+}
+
 resource "azurerm_role_assignment" "cluster_msi_reader" {
   scope                = "${data.azurerm_resource_group.cluster_node_group.id}"
   role_definition_name = "Reader"
   principal_id         = "${azurerm_user_assigned_identity.cluster_msi.principal_id}"
+  depends_on           = ["null_resource.sleep_wait_msi"]
 }
 
 resource "azurerm_role_assignment" "cluster_sp_MSI_operator" {
   scope                = "${azurerm_user_assigned_identity.cluster_msi.id}"
   role_definition_name = "Managed Identity Operator"
   principal_id         = "${azurerm_azuread_service_principal.aks_cluster.id}"
-}
-
-
-
-data "azurerm_kubernetes_cluster" "cluster" {
-  name                = "${azurerm_template_deployment.aks_cluster_arm.outputs["cluster_name"]}"
-  resource_group_name = "${azurerm_resource_group.env_resource_group.name}"
-}
-
-data "azurerm_resource_group" "cluster_node_group" {
-    name = "${data.azurerm_kubernetes_cluster.cluster.node_resource_group}" 
+  depends_on           = ["null_resource.sleep_wait_msi"]
 }

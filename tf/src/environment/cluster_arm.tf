@@ -1,11 +1,3 @@
-resource "null_resource" "sleep_wait" {
-  provisioner "local-exec" {
-    command = "sleep 15"
-  }
-  depends_on = ["azurerm_azuread_service_principal_password.aks_cluster"]
-}
-
-
 resource "azurerm_template_deployment" "aks_cluster_arm" {
   name                = "aks_arm_deployment"
   provider            = "azurerm"
@@ -33,7 +25,6 @@ resource "azurerm_template_deployment" "aks_cluster_arm" {
   }
 
   deployment_mode = "Incremental"
-  depends_on = ["${null_resource.sleep_wait}"]
 }
 
 resource "tls_private_key" "cluster_ssh" {

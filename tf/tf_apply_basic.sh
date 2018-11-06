@@ -73,11 +73,13 @@ export tfStorageKey
 if [[ $(az storage container exists --name ${tfStorageContainer} | jq -r '.exists') == false ]]; then
 	echo "Storage Container \"${tfStorageContainer}\" is missing, will be created"
 	az storage container create \
-		--name ${tfStorageContainer} \
-		--public-access blob
+		--name ${tfStorageContainer} 
 else
 	echo "Storage Container \"${tfStorageContainer}\" already exists, nothing todo"
 fi
+
+# Cleanup modules directory - Can be removed in future
+rm -rf .terraform\modules
 
 echo "Initialising TF Backend"
 terraform init -reconfigure \

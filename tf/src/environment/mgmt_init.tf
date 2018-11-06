@@ -26,3 +26,10 @@ resource "null_resource" "msi_template" {
   depends_on = ["azurerm_template_deployment.aks_cluster_arm"]
 }
 
+resource "null_resource" "ci_creds_template" {
+  count = "${var.is_mgmt}"
+
+  provisioner "local-exec" {
+    command = "echo \"${data.template_file.pipeline_credentials.rendered}\" > ${path.module}/ci/_output/ci_creds.yaml"
+  } 
+}
