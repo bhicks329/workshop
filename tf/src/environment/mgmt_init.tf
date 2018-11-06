@@ -46,6 +46,14 @@ resource "null_resource" "ci_creds_template" {
   } 
 }
 
+resource "null_resource" "ci_creds_aks_config" {
+  count = "${var.is_mgmt}"
+
+  provisioner "local-exec" {
+    command = "echo \"${data.azurerm_kubernetes_cluster.cluster.kube_config_raw}\" | sed 's/^/ /'  >> ${path.module}/ci/_output/ci_creds.yaml"
+  }
+  depends_on = ["null_resource.ci_creds_template"]
+}
 resource "null_resource" "app_setup_template" {
   count = "${var.is_mgmt}"
 
