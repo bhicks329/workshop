@@ -78,9 +78,6 @@ else
 	echo "Storage Container \"${tfStorageContainer}\" already exists, nothing todo"
 fi
 
-# Cleanup modules directory - Can be removed in future
-rm -rf .terraform\modules
-
 echo "Initialising TF Backend"
 terraform init -reconfigure \
 	-backend-config="container_name=${tfStorageContainer}" \
