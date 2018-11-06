@@ -27,6 +27,7 @@ data "template_file" "pipeline_credentials" {
     baseregistry-username = "${azurerm_container_registry.acr.admin_username}"
     baseregistry-password = "${azurerm_container_registry.acr.admin_password}"
     baseregistry-url      = "${azurerm_container_registry.acr.login_server}"
+    baseregistry-name     = "${azurerm_container_registry.acr.name}"
     kubeconfig            = "${data.azurerm_kubernetes_cluster.cluster.kube_config_raw}"
   }
 }
