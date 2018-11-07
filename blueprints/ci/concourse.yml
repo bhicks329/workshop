@@ -3,21 +3,33 @@ resource_types:
   - name: npm-cache
     type: docker-image
     source:
-      repository: ymedlop/npm-cache-resource
+      repository: ((wrregistry-url))/ymedlop/npm-cache-resource
+      username: ((wrregistry-username))
+      password: ((wrregistry-passwd))
       tag: latest
 
   - name: kubernetes
     type: docker-image
     source:
-      repository: zlabjp/kubernetes-resource
+      repository: ((wrregistry-url))/zlabjp/kubernetes-resource
+      username: ((wrregistry-username))
+      password: ((wrregistry-passwd))
       tag: "1.12"
+
+  - name: helm
+    type: docker-image
+    source:
+      repository: ((wrregistry-url))/mustafaatakan/mygoogle
+      username: ((wrregistry-username))
+      password: ((wrregistry-passwd))
+      tag: v1
 
 
 resources:
   - name: hello_hapi
     type: git
     source: &repo-source
-      uri: https://github.com/matakan/hello_hapi
+      uri: ((application-url))
       branch: master
 
   - name: dependency-cache
@@ -30,22 +42,31 @@ resources:
   - name: appRegistry
     type: docker-image
     source:
-      repository: mustafaatakan/demo-cicd
-      username: ((mustafaatakan-username))
-      password: ((mustafaatakan-passwd))
-
-  - name: k8s
-    type: kubernetes
-    source:
-      kubeconfig: ((k8s_server))
+      repository: ((baseregistry-url))/demo-cicd
+      username: ((baseregistry-username))
+      password: ((baseregistry-passwd))
 
   - name: scannercli
     type: docker-image
     source:
-      repository: aquasec/scanner-cli
+      repository: ((wrregistry-url))/aquasec/scanner-cli
+      username: ((wrregistry-username))
+      password: ((wrregistry-passwd))
       tag: 3.2
-      username: ((mustafaatakan-username))
-      password: ((mustafaatakan-passwd))
+
+  - name: helmKube
+    type: helm
+    source:
+#      release: helmKube
+      tiller_service_account: tiller
+      helm_init_server: true
+      cluster_url: ((k8s-server))
+      cluster_ca: ((k8s-ca))
+      token: ((k8s-token))
+      repos:
+        - name: chartmuseum
+#          url: http://51.140.160.73:8080
+          url: ((chartmuseum-url))
 
 
 jobs:
@@ -84,7 +105,9 @@ jobs:
           image_resource:
             type: docker-image
             source:
-              repository: amidos/dcind
+              repository: ((wrregistry-url))/amidos/dcind
+              username: ((wrregistry-username))
+              password: ((wrregistry-passwd))
           inputs:
             - name: scannercli
             - name: hello_hapi
@@ -102,7 +125,7 @@ jobs:
                 cd hello_hapi
                 docker build -t demo-cicd:tmp .
 
-                docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/scanner-cli:3.2 scan -H http://aqua-web.default:8080 -U ((scan-username)) -P ((scan-passwd)) --local demo-cicd:tmp
+                docker run -v /var/run/docker.sock:/var/run/docker.sock ((wrregistry-url))/aquasec/scanner-cli:3.2 scan -H http://aqua-web.default:8080 -U ((aquasec-username)) -P ((aquasec-passwd)) --local demo-cicd:tmp
                
 
   - name: Docker_Push
@@ -122,14 +145,16 @@ jobs:
       - get: hello_hapi
         trigger: true
         passed: [Docker_Push]
-      - task: run security scan
+      - task: Create and Upload chart
         privileged: true
         config:
           platform: linux
           image_resource:
             type: docker-image
             source:
-              repository: lachlanevenson/k8s-helm
+              repository: ((wrregistry-url))/centos/systemd
+              username: ((wrregistry-username))
+              password: ((wrregistry-passwd))
           inputs:
             - name: hello_hapi
           run:
@@ -137,24 +162,30 @@ jobs:
             args:
               - -exc
               - |
+                uname -a
+                yum -y install openssl git wget
+                curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash
+                helm init --client-only
+                helm plugin install https://github.com/chartmuseum/helm-push
+                curl -X DELETE ((chartmuseum-url))/api/charts/hello_hapi_helmpkg/0.1.0
+
                 cd hello_hapi
                 helm create hello_hapi_helmpkg
                 cp kubedir/service.yaml hello_hapi_helmpkg/templates
                 cp kubedir/deployment.yaml hello_hapi_helmpkg/templates
                 rm hello_hapi_helmpkg/templates/ingress.yaml
-		helm package hello_hapi_helmpkg
-                curl --data-binary "@hello_hapi_helmpkg-0.1.0.tgz" http://52.151.72.37:8090/api/charts
+                helm lint hello_hapi_helmpkg
+                helm package hello_hapi_helmpkg
+                
+                helm repo add chartmuseum ((chartmuseum-url))
+                helm push --force hello_hapi_helmpkg-0.1.0.tgz chartmuseum
 
-  - name: Deploy_Application
+  - name: Deploy_Chart
     public: false
     plan:
       - get: hello_hapi
         trigger: true
-        passed:
-          - "Docker_Push"
-      - put: k8s
+        passed: [ChartRepo_Push]
+      - put: helmKube
         params:
-#          kubectl: delete pods -l app=demo-cicd
-          kubectl: apply -f hello_hapi/kubeResource.yml
-          wait_until_ready: 300
-#          kubeconfig_file: ./.kube/config
+          chart: chartmuseum/hello_hapi_helmpkg
