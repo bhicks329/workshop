@@ -25,12 +25,14 @@ resource "null_resource" "init_mgmt_cluster" {
     EOT
   } 
   
-  depends_on = ["null_resource.msi_template"]
+  depends_on = ["null_resource.msi_template", "null_resource.fix_routetable"]
 }
 
 resource "null_resource" "msi_template" {
   count = "${var.is_mgmt}"
-
+  triggers {
+    time = "${timestamp()}"
+  }
   provisioner "local-exec" {
     command = "echo \"${data.template_file.msi_identity_binding_template.rendered}\" > ${path.module}/k8s/_output/msi_identity_binding.yaml"
   } 

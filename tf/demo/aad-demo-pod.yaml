@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   labels:
     app: demo
-    aadpodidbinding: demo
+    aadpodidbinding: aad_auth
   name: demo
   namespace: default
 spec:
