@@ -1,5 +1,12 @@
 baseregistry-username: ${baseregistry-username}
 baseregistry-passwd: ${baseregistry-password}
 baseregistry-url: ${baseregistry-url}:443/${baseregistry-name}
-
-k8s_server:
+aquasec-username: ${aquasec-username}
+aquasec-passwd: ${aquasec-passwd}
+wrregistry-username: ${wrregistry-username}
+wrregistry-passwd: ${wrregistry-passwd}
+wrregistry-url: ${wrregistry-url}
+chartmuseum-url:  ${chartmuseum-url}
+k8s-ca: ${k8s-ca}
+k8s-server: ${k8s-server}
+k8s-token: ${k8s-token}
