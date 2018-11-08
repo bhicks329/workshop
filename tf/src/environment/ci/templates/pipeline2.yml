@@ -1,0 +1,195 @@
+---
+resource_types:
+  - name: npm-cache
+    type: docker-image
+    source:
+      repository: ((wrregistry-url))/ymedlop/npm-cache-resource
+      username: ((wrregistry-username))
+      password: ((wrregistry-passwd))
+      tag: latest
+
+  - name: kubernetes
+    type: docker-image
+    source:
+      repository: ((wrregistry-url))/zlabjp/kubernetes-resource
+      username: ((wrregistry-username))
+      password: ((wrregistry-passwd))
+      tag: "1.12"
+
+  - name: helm
+    type: docker-image
+    source:
+      repository: ((wrregistry-url))/mustafaatakan/mygoogle
+      username: ((wrregistry-username))
+      password: ((wrregistry-passwd))
+      tag: v1
+
+
+resources:
+  - name: ${app_name}
+    type: git
+    source: &repo-source
+      uri: ${app_url}
+      branch: master
+
+  - name: dependency-cache
+    type: npm-cache
+    source:
+      <<: *repo-source
+      paths:
+        - package.json
+
+  - name: appRegistry
+    type: docker-image
+    source:
+      repository: ((baseregistry-url))/demo-cicd
+      username: ((baseregistry-username))
+      password: ((baseregistry-passwd))
+
+  - name: scannercli
+    type: docker-image
+    source:
+      repository: ((wrregistry-url))/aquasec/scanner-cli
+      username: ((wrregistry-username))
+      password: ((wrregistry-passwd))
+      tag: 3.2
+
+  - name: helmKube
+    type: helm
+    source:
+#      release: helmKube
+      tiller_service_account: tiller
+      helm_init_server: true
+      cluster_url: ((k8s-server))
+      cluster_ca: ((k8s-ca))
+      token: ((k8s-token))
+      repos:
+        - name: chartmuseum
+          url: ((chartmuseum-url))
+
+
+jobs:
+  - name: Install_dependencies
+    plan:
+      - get: ${app_name}
+        trigger: true
+      - get: dependency-cache
+
+  - name: Run_tests
+    plan:
+      - get: ${app_name}
+        trigger: true
+        passed: [Install_dependencies]
+      - get: dependency-cache
+        passed: [Install_dependencies]
+      - task: run the test suite
+        file: ${app_name}/ci/tasks/run_tests.yml
+
+  - name: Security_scan
+    public: true
+    plan:
+      - aggregate:
+        - get: ${app_name}
+          trigger: true
+          passed: [Run_tests]
+        - get: dependency-cache
+          passed: [Run_tests]
+        - get: scannercli
+          params: {save: true}
+      - task: run security scan
+        privileged: true
+#        file: ${app_name}/ci/tasks/run_security_scan.yml
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: ((wrregistry-url))/amidos/dcind
+              username: ((wrregistry-username))
+              password: ((wrregistry-passwd))
+          inputs:
+            - name: scannercli
+            - name: ${app_name}
+          run:
+            path: sh
+            args:
+              - -exc
+              - |
+                source /docker-lib.sh
+                start_docker
+
+                docker load -i scannercli/image
+
+                cat scannercli/image-id
+                cat scannercli/repository
+                cat scannercli/tag
+                
+                docker tag \"\$(cat scannercli/image-id)\" \"\$(cat scannercli/repository):\$(cat scannercli/tag)\"
+
+                cd ${app_name}
+                docker build -t demo-cicd:tmp .
+
+                docker run -v /var/run/docker.sock:/var/run/docker.sock ((wrregistry-url))/aquasec/scanner-cli:3.2 scan -H http://aqua-web.default:8080 -U ((aquasec-username)) -P ((aquasec-passwd)) --local demo-cicd:tmp
+               
+
+  - name: Docker_Push
+    public: false
+    plan:
+      - get: ${app_name}
+        trigger: true
+        passed: [Security_scan]
+      - get: dependency-cache
+        passed: [Security_scan]
+      - put: appRegistry
+        params:
+          build: ${app_name}
+
+  - name: ChartRepo_Push
+    plan:
+      - get: ${app_name}
+        trigger: true
+        passed: [Docker_Push]
+      - task: Create and Upload chart
+        privileged: true
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: ((wrregistry-url))/centos/systemd
+              username: ((wrregistry-username))
+              password: ((wrregistry-passwd))
+          inputs:
+            - name: ${app_name}
+          run:
+            path: sh
+            args:
+              - -exc
+              - |
+                uname -a
+                yum -y install openssl git wget
+                curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash
+                helm init --client-only
+                helm plugin install https://github.com/chartmuseum/helm-push
+                curl -X DELETE ((chartmuseum-url))/api/charts/${app_name}_helmpkg/0.1.0
+
+                cd ${app_name}
+                helm create ${app_name}_helmpkg
+                cp kubedir/service.yaml ${app_name}_helmpkg/templates
+                cp kubedir/deployment.yaml ${app_name}_helmpkg/templates
+                rm ${app_name}_helmpkg/templates/ingress.yaml
+                helm lint ${app_name}_helmpkg
+                helm package ${app_name}_helmpkg
+                
+                helm repo add chartmuseum ((chartmuseum-url))
+                helm push --force ${app_name}_helmpkg-0.1.0.tgz chartmuseum
+
+  - name: Deploy_Chart
+    public: false
+    plan:
+      - get: ${app_name}
+        trigger: true
+        passed: [ChartRepo_Push]
+      - put: helmKube
+        params:
+          chart: chartmuseum/${app_name}_helmpkg
