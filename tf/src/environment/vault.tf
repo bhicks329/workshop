@@ -28,7 +28,7 @@ resource "azurerm_key_vault_access_policy" "msi_access" {
   resource_group_name = "${azurerm_key_vault.vault.resource_group_name}"
 
   tenant_id = "${data.azurerm_client_config.current.tenant_id}"
-  object_id = "${azurerm_user_assigned_identity.cluster_msi.principal_id}"
+  object_id = "${azurerm_user_assigned_identity.keyvault_test.principal_id}"
 
   key_permissions = []
 

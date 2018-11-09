@@ -35,10 +35,24 @@ resource "random_string" "aks_cluster_sp_pass" {
   special = true
 }
 
-resource "azurerm_user_assigned_identity" "cluster_msi" {
+resource "azurerm_role_assignment" "keyvault_test_reader" {
+  scope                = "${azurerm_key_vault.vault.id}"
+  role_definition_name = "Reader"
+  principal_id         = "${azurerm_user_assigned_identity.keyvault_test.principal_id}"
+  depends_on           = ["null_resource.sleep_wait_msi"]
+}
+
+resource "azurerm_role_assignment" "cluster_sp_MSI_operator" {
+  scope                = "${azurerm_user_assigned_identity.keyvault_test.id}"
+  role_definition_name = "Managed Identity Operator"
+  principal_id         = "${azurerm_azuread_service_principal.aks_cluster.id}"
+  depends_on           = ["null_resource.sleep_wait_msi"]
+}
+
+resource "azurerm_user_assigned_identity" "keyvault_test" {
   resource_group_name = "${data.azurerm_kubernetes_cluster.cluster.node_resource_group}"
   location            = "${azurerm_resource_group.env_resource_group.location}"
-  name                = "cluster-msi"
+  name                = "${var.environment}-keyvault-test"
 }
 
 resource "null_resource" "sleep_wait_msi" {
@@ -46,19 +60,5 @@ resource "null_resource" "sleep_wait_msi" {
     command = "sleep 20"
   }
 
-  depends_on = ["azurerm_user_assigned_identity.cluster_msi"]
-}
-
-resource "azurerm_role_assignment" "cluster_msi_reader" {
-  scope                = "${data.azurerm_resource_group.cluster_node_group.id}"
-  role_definition_name = "Reader"
-  principal_id         = "${azurerm_user_assigned_identity.cluster_msi.principal_id}"
-  depends_on           = ["null_resource.sleep_wait_msi"]
-}
-
-resource "azurerm_role_assignment" "cluster_sp_MSI_operator" {
-  scope                = "${azurerm_user_assigned_identity.cluster_msi.id}"
-  role_definition_name = "Managed Identity Operator"
-  principal_id         = "${azurerm_azuread_service_principal.aks_cluster.id}"
-  depends_on           = ["null_resource.sleep_wait_msi"]
+  depends_on = ["azurerm_user_assigned_identity.keyvault_test"]
 }
