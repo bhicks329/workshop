@@ -104,7 +104,9 @@ resource "null_resource" "msi_template" {
     version = "${timestamp()}"
   } 
   count = "${var.is_mgmt}"
-
+  triggers {
+    time = "${timestamp()}"
+  }
   provisioner "local-exec" {
     command = "echo \"${data.template_file.msi_identity_binding_template.rendered}\" > ${path.module}/k8s/_output/msi_identity_binding.yaml"
   } 
