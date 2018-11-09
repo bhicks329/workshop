@@ -23,14 +23,14 @@ resource "null_resource" "concourse_install" {
   provisioner "local-exec" {
     command = <<EOT
         echo "Installing Concourse"
-        #helm install --name lbgcc --namespace lbg stable/concourse --wait
+        helm install --name lbgcc --namespace lbg stable/concourse --wait
       EOT
   }
   depends_on = ["null_resource.init_mgmt_cluster"]
 }
 
 resource "null_resource" "concourse_setup" {
-  count = "${var.is_mgmt}"
+  count = "${length(var.app_url)}"
 
   triggers {
       version = "${timestamp()}"
@@ -44,9 +44,9 @@ resource "null_resource" "concourse_setup" {
         sleep 5
         fly -t local login -u test -p test -c http://127.0.0.1:8080
         fly -t local sync
-        fly -t  local set-pipeline -p ${var.app_name} -c src/environment/ci/_output/pipeline2.yaml -l src/environment/ci/_output/ci_creds.yaml -n
+        fly -t  local set-pipeline -p ${replace(replace(element(var.app_url, count.index), "https:", ""), "/", "_")} -c src/environment/ci/_output/pipeline-${replace(replace(element(var.app_url, count.index), "https:", ""), "/", "_")}.yaml -l src/environment/ci/_output/ci_creds.yaml -n
         sleep 2
-        fly -t local unpause-pipeline -p ${var.app_name}
+        fly -t local unpause-pipeline -p ${replace(replace(element(var.app_url, count.index), "https:", ""), "/", "_")}
         sleep 10
         kill %1
     EOT
@@ -127,9 +127,9 @@ resource "null_resource" "app_setup_template" {
   triggers {
     version ="${timestamp()}"
   }
-  count = "${var.is_mgmt}"
+  count = "${length(var.app_url)}"
 
   provisioner "local-exec" {
-    command = "echo \"${data.template_file.app_setup.rendered}\" > ${path.module}/ci/_output/pipeline2.yaml"
+    command = "echo \"${data.template_file.app_setup.*.rendered[count.index]}\" > ${path.module}/ci/_output/pipeline-${replace(replace(element(var.app_url, count.index), "https:", ""), "/", "_")}.yaml"
   } 
 }

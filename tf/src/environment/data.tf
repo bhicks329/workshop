@@ -39,11 +39,13 @@ data "template_file" "pipeline_credentials" {
   }
 }
 data "template_file" "app_setup" {
+  count = "${length(var.app_url)}"
+
   template = "${file("${path.module}/ci/templates/pipeline2.yml")}"
 
   vars {
-    app_name              = "${var.app_name}"
-    app_url               = "${var.app_url}"
+    app_name              = "${replace(replace(element(var.app_url, count.index), "https:", ""), "/", "_")}"
+    app_url               = "${element(var.app_url, count.index)}"
     branch_name           = "${var.branch_name}"
   }
 }

@@ -26,7 +26,7 @@ resource_types:
 
 
 resources:
-  - name: ${app_name}
+  - name: app-name
     type: git
     source: &repo-source
       uri: ${app_url}
@@ -71,25 +71,25 @@ resources:
 jobs:
   - name: Install_dependencies
     plan:
-      - get: ${app_name}
+      - get: app-name
         trigger: true
       - get: dependency-cache
 
   - name: Run_tests
     plan:
-      - get: ${app_name}
+      - get: app-name
         trigger: true
         passed: [Install_dependencies]
       - get: dependency-cache
         passed: [Install_dependencies]
       - task: run the test suite
-        file: ${app_name}/ci/tasks/run_tests.yml
+        file: app-name/ci/tasks/run_tests.yml
 
   - name: Security_scan
     public: true
     plan:
       - aggregate:
-        - get: ${app_name}
+        - get: app-name
           trigger: true
           passed: [Run_tests]
         - get: dependency-cache
@@ -98,7 +98,7 @@ jobs:
           params: {save: true}
       - task: run security scan
         privileged: true
-#        file: ${app_name}/ci/tasks/run_security_scan.yml
+#        file: app-name/ci/tasks/run_security_scan.yml
         config:
           platform: linux
           image_resource:
@@ -109,7 +109,7 @@ jobs:
               password: ((wrregistry-passwd))
           inputs:
             - name: scannercli
-            - name: ${app_name}
+            - name: app-name
           run:
             path: sh
             args:
@@ -126,7 +126,7 @@ jobs:
                 
                 docker tag \"\$(cat scannercli/image-id)\" \"\$(cat scannercli/repository):\$(cat scannercli/tag)\"
 
-                cd ${app_name}
+                cd app-name
                 docker build -t demo-cicd:tmp .
 
                 docker run -v /var/run/docker.sock:/var/run/docker.sock ((wrregistry-url))/aquasec/scanner-cli:3.2 scan -H http://aqua-web.default:8080 -U ((aquasec-username)) -P ((aquasec-passwd)) --local demo-cicd:tmp
@@ -135,18 +135,18 @@ jobs:
   - name: Docker_Push
     public: false
     plan:
-      - get: ${app_name}
+      - get: app-name
         trigger: true
         passed: [Security_scan]
       - get: dependency-cache
         passed: [Security_scan]
       - put: appRegistry
         params:
-          build: ${app_name}
+          build: app-name
 
   - name: ChartRepo_Push
     plan:
-      - get: ${app_name}
+      - get: app-name
         trigger: true
         passed: [Docker_Push]
       - task: Create and Upload chart
@@ -160,7 +160,7 @@ jobs:
               username: ((wrregistry-username))
               password: ((wrregistry-passwd))
           inputs:
-            - name: ${app_name}
+            - name: app-name
           run:
             path: sh
             args:
@@ -171,25 +171,25 @@ jobs:
                 curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash
                 helm init --client-only
                 helm plugin install https://github.com/chartmuseum/helm-push
-                curl -X DELETE ((chartmuseum-url))/api/charts/${app_name}_helmpkg/0.1.0
+                curl -X DELETE ((chartmuseum-url))/api/charts/app-name_helmpkg/0.1.0
 
-                cd ${app_name}
-                helm create ${app_name}_helmpkg
-                cp kubedir/service.yaml ${app_name}_helmpkg/templates
-                cp kubedir/deployment.yaml ${app_name}_helmpkg/templates
-                rm ${app_name}_helmpkg/templates/ingress.yaml
-                helm lint ${app_name}_helmpkg
-                helm package ${app_name}_helmpkg
+                cd app-name
+                helm create app-name_helmpkg
+                cp kubedir/service.yaml app-name_helmpkg/templates
+                cp kubedir/deployment.yaml app-name_helmpkg/templates
+                rm app-name_helmpkg/templates/ingress.yaml
+                helm lint app-name_helmpkg
+                helm package app-name_helmpkg
                 
                 helm repo add chartmuseum ((chartmuseum-url))
-                helm push --force ${app_name}_helmpkg-0.1.0.tgz chartmuseum
+                helm push --force app-name_helmpkg-0.1.0.tgz chartmuseum
 
   - name: Deploy_Chart
     public: false
     plan:
-      - get: ${app_name}
+      - get: app-name
         trigger: true
         passed: [ChartRepo_Push]
       - put: helmKube
         params:
-          chart: chartmuseum/${app_name}_helmpkg
+          chart: chartmuseum/app-name_helmpkg

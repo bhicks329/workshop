@@ -9,11 +9,9 @@ variable "basename" {
 variable "location" {
   type = "string"
 }
-variable "app_name" {
-  type = "string"
-}
 variable "app_url" {
-  type = "string"
+  type = "list"
+  default = []
 }
 variable "branch_name" {
   type = "string"
