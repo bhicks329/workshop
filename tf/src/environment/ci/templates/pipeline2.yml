@@ -65,7 +65,6 @@ resources:
       token: ((k8s-token))
       repos:
         - name: chartmuseum
-#          url: http://51.140.160.73:8080
           url: ((chartmuseum-url))
 
 

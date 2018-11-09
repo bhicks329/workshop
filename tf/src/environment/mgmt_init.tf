@@ -19,11 +19,14 @@ resource "null_resource" "init_mgmt_cluster" {
 resource "null_resource" "concourse_install" {
   count = "${var.is_mgmt}"
 
+  triggers {
+      version = "${timestamp()}"
+  }
   
   provisioner "local-exec" {
     command = <<EOT
         echo "Installing Concourse"
-        #helm install --name lbgcc --namespace lbg stable/concourse --wait
+        helm install --name lbgcc --namespace lbg stable/concourse --wait
       EOT
   }
   depends_on = ["null_resource.init_mgmt_cluster"]
@@ -74,6 +77,7 @@ resource "null_resource" "chart_museum_setup" {
     command = <<EOT
       echo "Installing Chart Museum"
       helm install --set service.type=LoadBalancer --set env.open.DISABLE_API=false stable/chartmuseum
+      echo "chartmuseum-url: http://"`kubectl get svc | grep chartmuseum | awk '{print $1}'`".default:8080" >> ${path.module}/ci/_output/ci_creds.yaml
     EOT
   }
   depends_on=["null_resource.init_mgmt_cluster"]

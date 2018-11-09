@@ -36,7 +36,6 @@ data "template_file" "pipeline_credentials" {
     wrregistry-username = "warroommaster"
     wrregistry-passwd = "OzvWnaX4DVWHQlxuZp7Yq+WAjwKKg8K3"
     wrregistry-url = "warroommaster.azurecr.io"
-    chartmuseum-url = "http://52.136.233.75:8080"
   }
 }
 data "template_file" "app_setup" {
