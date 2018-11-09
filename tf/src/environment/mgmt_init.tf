@@ -93,13 +93,14 @@ resource "null_resource" "istio_chart_setup" {
         OSEXT="linux"
       fi
       
-      curl -L https://git.io/getLatestIstio --output getIstio.sh
       ISTIO_VERSION="${var.istio-version}"
       curl -L https://github.com/istio/istio/releases/download/$${ISTIO_VERSION}/istio-$${ISTIO_VERSION}-$${OSEXT}.tar.gz | tar xz
-      cd istio-"${var.istio-version}"/install/kubernetes/helm/
+      pushd istio-"${var.istio-version}"/install/kubernetes/helm/
       helm package istio
       az acr helm repo add --name "${azurerm_container_registry.acr.name}"
       az acr helm push --force istio-"${var.istio-version}".tgz --name "${azurerm_container_registry.acr.name}"
+      popd
+      rm -rf istio-"${var.istio-version}"
       EOT
   }
   depends_on=["null_resource.chart_museum_setup"]
