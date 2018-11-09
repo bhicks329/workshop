@@ -4,7 +4,7 @@ resource "null_resource" "init_mgmt_cluster" {
   provisioner "local-exec" {
     command = <<EOT
         set -e
-        az aks get-credentials --resource-group ${azurerm_resource_group.env_resource_group.name} --name ${azurerm_template_deployment.aks_cluster_arm.outputs.cluster_name} --admin
+        az aks get-credentials --resource-group ${azurerm_resource_group.env_resource_group.name} --name ${azurerm_template_deployment.aks_cluster_arm.outputs.cluster_name} --admin --overwrite-existing
         kubectl apply -f ${path.module}/k8s/helm-rbac.yaml
         kubectl apply -f ${path.module}/k8s/msi-rbac.yaml
         kubectl apply -f ${path.module}/k8s/_output/msi_identity_binding.yaml
@@ -19,10 +19,6 @@ resource "null_resource" "init_mgmt_cluster" {
 resource "null_resource" "concourse_install" {
   count = "${var.is_mgmt}"
 
-  triggers {
-      version = "${timestamp()}"
-  }
-  
   provisioner "local-exec" {
     command = <<EOT
         echo "Installing Concourse"
@@ -81,6 +77,46 @@ resource "null_resource" "chart_museum_setup" {
     EOT
   }
   depends_on=["null_resource.init_mgmt_cluster"]
+}
+
+resource "null_resource" "istio_chart_setup" {
+  count = "${var.is_mgmt}"
+  triggers {
+      version = "${timestamp()}"
+  }
+  provisioner "local-exec" {
+    command = <<EOT
+      OS="$(uname)"
+      if [ "x$${OS}" = "xDarwin" ] ; then
+        OSEXT="osx"
+      else
+        OSEXT="linux"
+      fi
+      
+      curl -L https://git.io/getLatestIstio --output getIstio.sh
+      ISTIO_VERSION="${var.istio-version}"
+      curl -L https://github.com/istio/istio/releases/download/$${ISTIO_VERSION}/istio-$${ISTIO_VERSION}-$${OSEXT}.tar.gz | tar xz
+      cd istio-"${var.istio-version}"/install/kubernetes/helm/
+      helm package istio
+      az acr helm repo add --name "${azurerm_container_registry.acr.name}"
+      az acr helm push --force istio-"${var.istio-version}".tgz --name "${azurerm_container_registry.acr.name}"
+      EOT
+  }
+  depends_on=["null_resource.chart_museum_setup"]
+}
+
+resource "null_resource" "istio_setup" {
+  count = "${var.is_mgmt}"
+  triggers {
+      version = "${timestamp()}"
+  }
+  provisioner "local-exec" {
+    command = <<EOT
+    helm repo update
+    helm install ${azurerm_container_registry.acr.name}/istio --name istio --namespace istio-system --set servicegraph.enabled=true --set tracing.enabled=true --set grafana.enabled=true
+    EOT
+  }
+  depends_on=["null_resource.istio_chart_setup"]
 }
 
 resource "null_resource" "aquasec_setup" {

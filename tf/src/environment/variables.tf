@@ -77,6 +77,11 @@ variable "is_mgmt" {
   default = "0"
 }
 
+variable "istio-version" {
+  type = "string"
+  default = "1.0.3"
+}
+
 variable "root_dns_zone" {
   type = "string"
   default = "demo.sequenced.net"
