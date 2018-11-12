@@ -2,10 +2,10 @@
 set -eu
 
 create_rand() {
-   if uname -a | grep -qi linux; then
-	 printf ${1} | md5sum | cut -c1-${2}
+   if [[ $OSTYPE == 'linux-gnu' ]]; then
+		md5sum <<< ${1} | cut -c1-${2}
    else
-	 md5 -q -s ${1} | cut -c1-${2}
+		md5 -q -s ${1} | cut -c1-${2}
    fi
 }
 
