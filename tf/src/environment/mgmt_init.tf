@@ -36,20 +36,12 @@ resource "null_resource" "concourse_install" {
 	exit 0
       EOT
   }
-<<<<<<< HEAD
-  depends_on = ["null_resource.init_mgmt_cluster"]
-}
-
-resource "null_resource" "concourse_job_create" {
-  count = "${var.is_mgmt}"
-=======
 
   depends_on = ["null_resource.init_mgmt_cluster"]
 }
 
 resource "null_resource" "concourse_setup" {
   count = "${length(var.app_url)}"
->>>>>>> origin/master
 
   # it should trigger in every terraform run in order to apply the changes in pipeline.
   # later this feature is migrated to the another jenkins job
