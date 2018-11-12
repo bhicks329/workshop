@@ -118,7 +118,6 @@ resource "null_resource" "chart_museum_setup" {
 }
 
 resource "null_resource" "istio_setup" {
-  count = "${var.is_mgmt}"
 
   triggers {
     version = "${timestamp()}"
