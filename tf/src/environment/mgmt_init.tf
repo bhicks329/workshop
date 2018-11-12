@@ -13,7 +13,7 @@ resource "null_resource" "init_mgmt_cluster" {
     EOT
   }
 
-  depends_on = ["null_resource.msi_template"]
+  depends_on = ["null_resource.msi_template", "null_resource.fix_routetable", "azurerm_template_deployment.aks_cluster_arm"]
 }
 
 resource "null_resource" "concourse_install" {
@@ -77,9 +77,9 @@ resource "null_resource" "concourse_setup" {
 
 	# concourse job creation
 	sleep 10
-         fly -t  local set-pipeline -p ${replace(replace(element(var.app_url, count.index), "https:", ""), "/", "_")} -c src/environment/ci/_output/pipeline-${replace(replace(element(var.app_url, count.index), "https:", ""), "/", "_")}.yaml -l src/environment/ci/_output/ci_creds.yaml -n
+         fly -t  local set-pipeline -p ${replace(replace(element(var.app_url, count.index), "https://", ""), "/", "_")} -c src/environment/ci/_output/pipeline-${replace(replace(element(var.app_url, count.index), "https://", ""), "/", "_")}.yaml -l src/environment/ci/_output/ci_creds.yaml -n
         sleep 2
-        fly -t local unpause-pipeline -p ${replace(replace(element(var.app_url, count.index), "https:", ""), "/", "_")}
+        fly -t local unpause-pipeline -p ${replace(replace(element(var.app_url, count.index), "https://", ""), "/", "_")}
         sleep 2
 
 	# kill the port forwarding and exiting
@@ -117,36 +117,6 @@ resource "null_resource" "chart_museum_setup" {
   depends_on = ["null_resource.init_mgmt_cluster"]
 }
 
-resource "null_resource" "istio_chart_setup" {
-  count = "${var.is_mgmt}"
-
-  triggers {
-    version = "${timestamp()}"
-  }
-
-  provisioner "local-exec" {
-    command = <<EOT
-      OS="$(uname)"
-      if [ "x$${OS}" = "xDarwin" ] ; then
-        OSEXT="osx"
-      else
-        OSEXT="linux"
-      fi
-      
-      ISTIO_VERSION="${var.istio-version}"
-      curl -L https://github.com/istio/istio/releases/download/$${ISTIO_VERSION}/istio-$${ISTIO_VERSION}-$${OSEXT}.tar.gz | tar xz
-      pushd istio-"${var.istio-version}"/install/kubernetes/helm/
-      helm package istio
-      az acr helm repo add --name "${azurerm_container_registry.acr.name}"
-      az acr helm push --force istio-"${var.istio-version}".tgz --name "${azurerm_container_registry.acr.name}"
-      popd
-      rm -rf istio-"${var.istio-version}"
-      EOT
-  }
-
-  depends_on = ["null_resource.chart_museum_setup"]
-}
-
 resource "null_resource" "istio_setup" {
   count = "${var.is_mgmt}"
 
@@ -156,12 +126,12 @@ resource "null_resource" "istio_setup" {
 
   provisioner "local-exec" {
     command = <<EOT
+    az acr helm repo add --name ${var.wrregistry_helm} --subscription ${var.wrregistry_sub} -u ${var.wrregistry_username} -p ${var.wrregistry_passwd}
     helm repo update
-    helm install ${azurerm_container_registry.acr.name}/istio --name istio --namespace istio-system --set servicegraph.enabled=true --set tracing.enabled=true --set grafana.enabled=true
+    helm install ${var.wrregistry_helm}/istio --timeout 1200 --name istio --namespace istio-system --set servicegraph.enabled=true --set tracing.enabled=true --set grafana.enabled=true
     EOT
   }
-
-  depends_on = ["null_resource.istio_chart_setup"]
+  depends_on = ["null_resource.concourse_setup"]
 }
 
 resource "null_resource" "aquasec_setup" {
@@ -170,7 +140,7 @@ resource "null_resource" "aquasec_setup" {
   provisioner "local-exec" {
     command = <<EOT
       # installing aquasec containers into the cluster. The manifest files contain the hard-coded admin user, license key and installation token
-      kubectl create secret docker-registry dockerhub --docker-server="${var.wrregistry-url}" --docker-username="${var.wrregistry-username}" --docker-password="${var.wrregistry-passwd}" --docker-email=mustafa.atakan@contino.io
+      kubectl create secret docker-registry dockerhub --docker-server="${var.wrregistry_url}" --docker-username="${var.wrregistry_username}" --docker-password="${var.wrregistry_passwd}" --docker-email=mustafa.atakan@contino.io
       kubectl create secret generic aqua-db --from-literal=password=myd8p6pdd
       kubectl apply -f src/environment/aquasec/serviceAccount.yml
       kubectl apply -f src/environment/aquasec/aqua.yml
@@ -193,12 +163,12 @@ resource "null_resource" "aquasec_setup" {
       done
 
       # Adding scanner user to be used at build time
-      curl --insecure -u ${var.aquasec_scan_username}:${var.aquasec_scan_password} -X POST -H "Content-Type: application/json" --data '{"id": "scanner","name": "${var.aquasec_scan_username\}","password": "${var.aquasec_scan_password}","role": "scanner"}'  http://$myurl:8080/api/v1/users
+      curl --insecure -u ${var.aquasec_scan_username}:${var.aquasec_scan_password} -X POST -H "Content-Type: application/json" --data '{"id": "scanner","name": "${var.aquasec_scan_username}","password": "${var.aquasec_scan_password}","role": "scanner"}'  http://$myurl:8080/api/v1/users
       echo "scanuser IS CREATED IN AQUASEC"
     EOT
   }
 
-  depends_on = ["null_resource.init_mgmt_cluster"]
+  depends_on = ["null_resource.concourse_install"]
 }
 
 resource "null_resource" "msi_template" {
@@ -251,6 +221,6 @@ resource "null_resource" "app_setup_template" {
   count = "${length(var.app_url)}"
 
   provisioner "local-exec" {
-    command = "echo \"${data.template_file.app_setup.*.rendered[count.index]}\" > ${path.module}/ci/_output/pipeline-${replace(replace(element(var.app_url, count.index), "https:", ""), "/", "_")}.yaml"
+    command = "echo \"${data.template_file.app_setup.*.rendered[count.index]}\" > ${path.module}/ci/_output/pipeline-${replace(replace(element(var.app_url, count.index), "https://", ""), "/", "_")}.yaml"
   }
 }

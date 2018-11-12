@@ -31,9 +31,9 @@ data "template_file" "pipeline_credentials" {
     k8s-token             = "${data.azurerm_kubernetes_cluster.cluster.kube_config.0.password}"
     aquasec-username      = "${var.aquasec_scan_username}"
     aquasec-passwd        = "${var.aquasec_scan_password}"
-    wrregistry-username   = "${var.wrregistry-username}"
-    wrregistry-passwd     = "${var.wrregistry-passwd}"
-    wrregistry-url        = "${var.wrregistry-url}"
+    wrregistry_username   = "${var.wrregistry_username}"
+    wrregistry_passwd     = "${var.wrregistry_passwd}"
+    wrregistry_url        = "${var.wrregistry_url}"
   }
 }
 
@@ -43,7 +43,7 @@ data "template_file" "app_setup" {
   template = "${file("${path.module}/ci/templates/pipeline2.yml")}"
 
   vars {
-    app_name    = "${replace(replace(element(var.app_url, count.index), "https:", ""), "/", "_")}"
+    app_name    = "${replace(replace(element(var.app_url, count.index), "https://", ""), "/", "_")}"
     app_url     = "${element(var.app_url, count.index)}"
     branch_name = "${var.branch_name}"
   }
