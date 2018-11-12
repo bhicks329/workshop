@@ -11,52 +11,89 @@ resource "null_resource" "init_mgmt_cluster" {
         echo "Installing Helm into the Cluster"
         helm init --service-account tiller --wait
     EOT
-  } 
-  
-  depends_on = ["null_resource.msi_template"]
+  }
+
+  depends_on = ["null_resource.msi_template", "null_resource.fix_routetable", "azurerm_template_deployment.aks_cluster_arm"]
 }
 
 resource "null_resource" "concourse_install" {
   count = "${var.is_mgmt}"
-
+  
   provisioner "local-exec" {
     command = <<EOT
         echo "Installing Concourse"
-        helm install --name lbgcc --namespace lbg stable/concourse --wait
+
+	# concourse package install may timeout although it has been installed into the cluster. In this situation, this task should return true.
+        helm install --name lbgcc --namespace lbg stable/concourse --wait --timeout 1500 --tiller-connection-timeout 1500 || true
+
+	# if installation exists due to timeout but concourse is being installed, there are still containers being created. 
+	while ( kubectl get pods -n lbg | grep -v ^NAME | grep -v Running ); do
+	   echo "Concourse containers are still being created, waiting..."
+	   sleep 30
+	done
+
+	# the resource should exit successfully if there is a timeout failure in order not to let it run again in the next terraform iteration
+	exit 0
       EOT
   }
+
   depends_on = ["null_resource.init_mgmt_cluster"]
 }
 
 resource "null_resource" "concourse_setup" {
-  count = "${var.is_mgmt}"
+  count = "${length(var.app_url)}"
 
+  # it should trigger in every terraform run in order to apply the changes in pipeline.
+  # later this feature is migrated to the another jenkins job
   triggers {
       version = "${timestamp()}"
   } 
+
   provisioner "local-exec" {
     command = <<EOT
+	# port forwarding for the concourse container from local into kubernetes cluster
         export CONCOURSE_POD=$(kubectl get pods --namespace lbg -l "app=lbgcc-web" -o jsonpath="{.items[0].metadata.name}")
-        echo "checking whether port forward is running"
-        ps -ef | grep kubectl
-        kubectl port-forward --namespace lbg $CONCOURSE_POD 8080 &
-        sleep 5
-        fly -t local login -u test -p test -c http://127.0.0.1:8080
-        fly -t local sync
-        fly -t  local set-pipeline -p ${var.app_name} -c src/environment/ci/_output/pipeline2.yaml -l src/environment/ci/_output/ci_creds.yaml -n
+        kubectl port-forward --namespace lbg $CONCOURSE_POD 8080 2>/dev/null &
+
+	# looping until port forwarding is successful
+	bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/8080' 2>/dev/null 
+        while [ "$?" -ne 0 ]; do
+	  echo "Concourse port is not ready yet, trying..."
+	  kill %1 2>/dev/null || true
+	  sleep 3
+          export CONCOURSE_POD=$(kubectl get pods --namespace lbg -l "app=lbgcc-web" -o jsonpath="{.items[0].metadata.name}")
+          kubectl port-forward --namespace lbg $CONCOURSE_POD 8080 2>/dev/null &
+	  sleep 10
+	  bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/8080' 2>/dev/null
+        done
+
+	# looping until login to concourse is successful
+        fly -t local login -u test -p test -c http://127.0.0.1:8080 2>/dev/null
+        while [ "$?" -ne 0 ]; do
+	  echo "There is a problem in login, trying..."
+	  sleep 30
+          fly -t local login -u test -p test -c http://127.0.0.1:8080 2>/dev/null
+	done
+
+	# concourse job creation
+	sleep 10
+         fly -t  local set-pipeline -p ${replace(replace(element(var.app_url, count.index), "https://", ""), "/", "_")} -c src/environment/ci/_output/pipeline-${replace(replace(element(var.app_url, count.index), "https://", ""), "/", "_")}.yaml -l src/environment/ci/_output/ci_creds.yaml -n
         sleep 2
-        fly -t local unpause-pipeline -p ${var.app_name}
-        sleep 10
-        kill %1
+        fly -t local unpause-pipeline -p ${replace(replace(element(var.app_url, count.index), "https://", ""), "/", "_")}
+        sleep 2
+
+	# kill the port forwarding and exiting
+        kill %1 2>/dev/null|| true
+	exit 0
     EOT
   }
 
-  depends_on = ["null_resource.concourse_install"]
+  depends_on = ["null_resource.concourse_install", "null_resource.aquasec_setup"]
 }
 
 resource "null_resource" "rbac" {
   count = "${var.is_mgmt}"
- 
+
   provisioner "local-exec" {
     command = <<EOT
       echo "installing rbac"
@@ -64,114 +101,126 @@ resource "null_resource" "rbac" {
     EOT
   }
 
-  depends_on=["null_resource.init_mgmt_cluster"]
+  depends_on = ["null_resource.init_mgmt_cluster"]
 }
 
 resource "null_resource" "chart_museum_setup" {
   count = "${var.is_mgmt}"
+
   provisioner "local-exec" {
     command = <<EOT
       echo "Installing Chart Museum"
       helm install --set service.type=LoadBalancer --set env.open.DISABLE_API=false stable/chartmuseum
-      echo "chartmuseum-url: http://"`kubectl get svc | grep chartmuseum | awk '{print $1}'`".default:8080" >> ${path.module}/ci/_output/ci_creds.yaml
     EOT
   }
-  depends_on=["null_resource.init_mgmt_cluster"]
-}
 
-resource "null_resource" "istio_chart_setup" {
-  count = "${var.is_mgmt}"
-  triggers {
-      version = "${timestamp()}"
-  }
-  provisioner "local-exec" {
-    command = <<EOT
-      OS="$(uname)"
-      if [ "x$${OS}" = "xDarwin" ] ; then
-        OSEXT="osx"
-      else
-        OSEXT="linux"
-      fi
-      
-      ISTIO_VERSION="${var.istio-version}"
-      curl -L https://github.com/istio/istio/releases/download/$${ISTIO_VERSION}/istio-$${ISTIO_VERSION}-$${OSEXT}.tar.gz | tar xz
-      pushd istio-"${var.istio-version}"/install/kubernetes/helm/
-      helm package istio
-      az acr helm repo add --name "${azurerm_container_registry.acr.name}"
-      az acr helm push --force istio-"${var.istio-version}".tgz --name "${azurerm_container_registry.acr.name}"
-      popd
-      rm -rf istio-"${var.istio-version}"
-      EOT
-  }
-  depends_on=["null_resource.chart_museum_setup"]
+  depends_on = ["null_resource.init_mgmt_cluster"]
 }
 
 resource "null_resource" "istio_setup" {
   count = "${var.is_mgmt}"
+
   triggers {
-      version = "${timestamp()}"
+    version = "${timestamp()}"
   }
+
   provisioner "local-exec" {
     command = <<EOT
+    az acr helm repo add --name ${var.wrregistry_helm} --subscription ${var.wrregistry_sub} -u ${var.wrregistry_username} -p ${var.wrregistry_passwd}
     helm repo update
-    helm install ${azurerm_container_registry.acr.name}/istio --name istio --namespace istio-system --set servicegraph.enabled=true --set tracing.enabled=true --set grafana.enabled=true
+    helm install ${var.wrregistry_helm}/istio --timeout 1200 --name istio --namespace istio-system --set servicegraph.enabled=true --set tracing.enabled=true --set grafana.enabled=true
     EOT
   }
-  depends_on=["null_resource.istio_chart_setup"]
+  depends_on = ["null_resource.concourse_setup"]
 }
 
 resource "null_resource" "aquasec_setup" {
   count = "${var.is_mgmt}"
-  
+
   provisioner "local-exec" {
     command = <<EOT
-      kubectl create secret docker-registry dockerhub --docker-server="${var.wrregistry-url}" --docker-username="${var.wrregistry-username}" --docker-password="${var.wrregistry-passwd}" --docker-email=mustafa.atakan@contino.io
+      # installing aquasec containers into the cluster. The manifest files contain the hard-coded admin user, license key and installation token
+      kubectl create secret docker-registry dockerhub --docker-server="${var.wrregistry_url}" --docker-username="${var.wrregistry_username}" --docker-password="${var.wrregistry_passwd}" --docker-email=mustafa.atakan@contino.io
       kubectl create secret generic aqua-db --from-literal=password=myd8p6pdd
       kubectl apply -f src/environment/aquasec/serviceAccount.yml
       kubectl apply -f src/environment/aquasec/aqua.yml
       kubectl apply -f src/environment/aquasec/enforcer.yml
-      sleep 60
+
+      # looping till the external IP is ready
       myurl=$(kubectl get svc  --all-namespaces | grep aqua-web | awk '{print $5}')
-      curl --insecure -u administrator:myadmin77 -X POST -H "Content-Type: application/json" --data '{"id": "scanner","name": "scanner","password": "myscan77","role": "scanner"}'  http://$myurl:8080/api/v1/users
-      echo "scan user created"
+      while [ "$myurl" == "<pending>" ]; do
+	echo "Waiting for Load Balancer IP..."
+	myurl=$(kubectl get svc  --all-namespaces | grep aqua-web | awk '{print $5}')
+	sleep 30
+      done
+
+      # looping until the service becomes ready
+      bash -c "cat < /dev/null > /dev/tcp/$myurl/8080" 2>/dev/null
+      while [ "$?" -ne 0 ]; do
+      	  echo "Aquasec-web is not responding, retrying..."
+	  sleep 30
+	  bash -c 'cat < /dev/null > /dev/tcp/$myurl/8080' 2>/dev/null
+      done
+
+      # Adding scanner user to be used at build time
+      curl --insecure -u ${var.aquasec_scan_username}:${var.aquasec_scan_password} -X POST -H "Content-Type: application/json" --data '{"id": "scanner","name": "${var.aquasec_scan_username}","password": "${var.aquasec_scan_password}","role": "scanner"}'  http://$myurl:8080/api/v1/users
+      echo "scanuser IS CREATED IN AQUASEC"
     EOT
   }
-  depends_on=["null_resource.init_mgmt_cluster"]
+
+  depends_on = ["null_resource.concourse_install"]
 }
 
 resource "null_resource" "msi_template" {
   triggers {
     version = "${timestamp()}"
-  } 
+  }
+
   count = "${var.is_mgmt}"
+
   triggers {
     time = "${timestamp()}"
   }
+
   provisioner "local-exec" {
     command = "echo \"${data.template_file.msi_identity_binding_template.rendered}\" > ${path.module}/k8s/_output/msi_identity_binding.yaml"
-  } 
+  }
 
   depends_on = ["azurerm_template_deployment.aks_cluster_arm"]
 }
 
 resource "null_resource" "ci_creds_template" {
   triggers {
-    version ="${timestamp()}"
+    version = "${timestamp()}"
   }
+
   count = "${var.is_mgmt}"
 
   provisioner "local-exec" {
     command = "echo \"${data.template_file.pipeline_credentials.rendered}\" > ${path.module}/ci/_output/ci_creds.yaml"
-  } 
+  }
 }
 
-resource "null_resource" "app_setup_template" {
+resource "null_resource" "chartmuseum_url" {
   triggers {
     version ="${timestamp()}"
   }
   count = "${var.is_mgmt}"
 
   provisioner "local-exec" {
-    command = "echo \"${data.template_file.app_setup.rendered}\" > ${path.module}/ci/_output/pipeline2.yaml"
+     command = "echo \"chartmuseum-url: http://\"`kubectl get svc | grep chartmuseum | awk '{print $1}'`\".default:8080\" >> ${path.module}/ci/_output/ci_creds.yaml"
   } 
+  depends_on = ["null_resource.chart_museum_setup", "null_resource.ci_creds_template"]
+}
+
+resource "null_resource" "app_setup_template" {
+  triggers {
+    version = "${timestamp()}"
+  }
+
+  count = "${length(var.app_url)}"
+
+  provisioner "local-exec" {
+    command = "echo \"${data.template_file.app_setup.*.rendered[count.index]}\" > ${path.module}/ci/_output/pipeline-${replace(replace(element(var.app_url, count.index), "https://", ""), "/", "_")}.yaml"
+  }
 }
