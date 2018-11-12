@@ -1,0 +1,48 @@
+ingress:
+  enabled: true
+  host: "spinnaker.test.com"
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "spinnaker.test.com"
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ingress.class: "nginx"
+  tls:
+   - secretName: my-company-com-tls
+     hosts:
+       - spinnaker.test.com
+
+dockerRegistries:
+- address: "lloydsproject2mgmtyygvvf.azurecr.io"
+  email: "ben.hicks@contino.io"
+  name: "Applications"
+  password: "WdcNQw5FFySsuwpZenr6m5OG6u8==n+i"
+  username: "lloydsproject2mgmtyygvvf"
+  repositories:
+    - lloydsproject2mgmtyygvvf
+
+kubeConfig:
+  enabled: false
+  contexts:
+  - aks-lloyds-project2-mgmt-admin
+  deploymentContext: aks-lloyds-project2-mgmt-admin
+
+rbac:
+  create: true
+
+minio:
+  enabled: true
+
+s3:
+  accessKey: "<aws-access-key>"
+  bucket: "<aws-spinnaker-bucket>"
+  enabled: false
+  region: "<aws-region>"
+  secretKey: "<aws-secret-key>"
+
+serviceAccount:
+  create: true
+
+spinnakerFeatureFlags:
+  - artifacts
+  - infrastructure-stages
+  - jobs
+  - pipeline-templates
