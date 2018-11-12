@@ -28,6 +28,19 @@ variable "cluster_os_disk_size" {
   default = "100"
 }
 
+variable "wrregistry-username" {
+  type    = "string"
+  default = "warroommaster"
+}
+variable "wrregistry-passwd" {
+  type    = "string"
+  default = "OzvWnaX4DVWHQlxuZp7Yq+WAjwKKg8K3"
+}
+
+variable "wrregistry-url" {
+  type    = "string"
+  default = "warroommaster.azurecr.io"
+}
 variable "cluster_node_count" {
   type    = "string"
   default = "2"
@@ -62,6 +75,11 @@ variable "vnet_address_space" {
 variable "is_mgmt" {
   type    = "string"
   default = "0"
+}
+
+variable "istio-version" {
+  type = "string"
+  default = "1.0.3"
 }
 
 variable "root_dns_zone" {
