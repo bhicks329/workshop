@@ -28,24 +28,25 @@ data "template_file" "pipeline_credentials" {
     baseregistry-password = "${azurerm_container_registry.acr.admin_password}"
     baseregistry-url      = "${azurerm_container_registry.acr.login_server}"
     baseregistry-name     = "${azurerm_container_registry.acr.name}"
-    k8s-ca                = "${data.azurerm_kubernetes_cluster.cluster.kube_config.0.cluster_ca_certificate}" 
-    k8s-server            = "${data.azurerm_kubernetes_cluster.cluster.kube_config.0.host}" 
-    k8s-token             = "${data.azurerm_kubernetes_cluster.cluster.kube_config.0.password}" 
-    aquasec-username = "scanner"
-    aquasec-passwd = "myscan77"
-    wrregistry-username = "warroommaster"
-    wrregistry-passwd = "OzvWnaX4DVWHQlxuZp7Yq+WAjwKKg8K3"
-    wrregistry-url = "warroommaster.azurecr.io"
+    k8s-ca                = "${data.azurerm_kubernetes_cluster.cluster.kube_config.0.cluster_ca_certificate}"
+    k8s-server            = "${data.azurerm_kubernetes_cluster.cluster.kube_config.0.host}"
+    k8s-token             = "${data.azurerm_kubernetes_cluster.cluster.kube_config.0.password}"
+    aquasec-username      = "${var.aquasec_scan_username}"
+    aquasec-passwd        = "${var.aquasec_scan_password}"
+    wrregistry-username   = "${var.wrregistry-username}"
+    wrregistry-passwd     = "${var.wrregistry-passwd}"
+    wrregistry-url        = "${var.wrregistry-url}"
   }
 }
+
 data "template_file" "app_setup" {
   count = "${length(var.app_url)}"
 
   template = "${file("${path.module}/ci/templates/pipeline2.yml")}"
 
   vars {
-    app_name              = "${replace(replace(element(var.app_url, count.index), "https:", ""), "/", "_")}"
-    app_url               = "${element(var.app_url, count.index)}"
-    branch_name           = "${var.branch_name}"
+    app_name    = "${replace(replace(element(var.app_url, count.index), "https:", ""), "/", "_")}"
+    app_url     = "${element(var.app_url, count.index)}"
+    branch_name = "${var.branch_name}"
   }
 }

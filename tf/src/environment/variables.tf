@@ -79,3 +79,13 @@ variable "root_dns_zone" {
   type = "string"
   default = "demo.sequenced.net"
 }
+
+variable "aquasec_scan_username" {
+  type = "string"
+  default  = "scanner"
+}
+
+variable "aquasec_scan_password" {
+  type = "string"
+  default  = "myscan77"
+}
