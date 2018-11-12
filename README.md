@@ -4,6 +4,7 @@ Helm
 AZ Cli
 JQ
 Terraform
+fly concourse cli
 
 Ensure you are logged into the correct subscription  with `az login`
 

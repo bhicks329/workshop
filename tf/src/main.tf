@@ -8,8 +8,7 @@ module "mgmt_environment" {
   service_address_range = "10.10.4.0/22"
   subscription          = "8d7951f6-ff12-4e36-822b-cdba7dca0469"
   is_mgmt               = "1"
-  app_name              = "hello_hapi"
-  app_url               = "https://github.com/matakan/hello_hapi"
+  app_url               = ["https://github.com/irinatsyganok/hello_hapi", "https://github.com/irinatsyganok/hello_hapi2"]
   branch_name           = "master"
 }
 

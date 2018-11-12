@@ -3,25 +3,25 @@ resource_types:
   - name: npm-cache
     type: docker-image
     source:
-      repository: ((wrregistry-url))/ymedlop/npm-cache-resource
-      username: ((wrregistry-username))
-      password: ((wrregistry-passwd))
+      repository: ((wrregistry_url))/ymedlop/npm-cache-resource
+      username: ((wrregistry_username))
+      password: ((wrregistry_passwd))
       tag: latest
 
   - name: kubernetes
     type: docker-image
     source:
-      repository: ((wrregistry-url))/zlabjp/kubernetes-resource
-      username: ((wrregistry-username))
-      password: ((wrregistry-passwd))
+      repository: ((wrregistry_url))/zlabjp/kubernetes-resource
+      username: ((wrregistry_username))
+      password: ((wrregistry_passwd))
       tag: "1.12"
 
   - name: helm
     type: docker-image
     source:
-      repository: ((wrregistry-url))/mustafaatakan/mygoogle
-      username: ((wrregistry-username))
-      password: ((wrregistry-passwd))
+      repository: ((wrregistry_url))/mustafaatakan/mygoogle
+      username: ((wrregistry_username))
+      password: ((wrregistry_passwd))
       tag: v1
 
 
@@ -49,9 +49,9 @@ resources:
   - name: scannercli
     type: docker-image
     source:
-      repository: ((wrregistry-url))/aquasec/scanner-cli
-      username: ((wrregistry-username))
-      password: ((wrregistry-passwd))
+      repository: ((wrregistry_url))/aquasec/scanner-cli
+      username: ((wrregistry_username))
+      password: ((wrregistry_passwd))
       tag: 3.2
 
   - name: helmKube
@@ -104,9 +104,9 @@ jobs:
           image_resource:
             type: docker-image
             source:
-              repository: ((wrregistry-url))/amidos/dcind
-              username: ((wrregistry-username))
-              password: ((wrregistry-passwd))
+              repository: ((wrregistry_url))/amidos/dcind
+              username: ((wrregistry_username))
+              password: ((wrregistry_passwd))
           inputs:
             - name: scannercli
             - name: ${app_name}
@@ -129,7 +129,7 @@ jobs:
                 cd ${app_name}
                 docker build -t demo-cicd:tmp .
 
-                docker run -v /var/run/docker.sock:/var/run/docker.sock ((wrregistry-url))/aquasec/scanner-cli:3.2 scan -H http://aqua-web.default:8080 -U ((aquasec-username)) -P ((aquasec-passwd)) --local demo-cicd:tmp
+                docker run -v /var/run/docker.sock:/var/run/docker.sock ((wrregistry_url))/aquasec/scanner-cli:3.2 scan -H http://aqua-web.default:8080 -U ((aquasec-username)) -P ((aquasec-passwd)) --local demo-cicd:tmp
                
 
   - name: Docker_Push
@@ -156,9 +156,9 @@ jobs:
           image_resource:
             type: docker-image
             source:
-              repository: ((wrregistry-url))/centos/systemd
-              username: ((wrregistry-username))
-              password: ((wrregistry-passwd))
+              repository: ((wrregistry_url))/centos/systemd
+              username: ((wrregistry_username))
+              password: ((wrregistry_passwd))
           inputs:
             - name: ${app_name}
           run:

@@ -4,16 +4,16 @@ resource "null_resource" "init_mgmt_cluster" {
   provisioner "local-exec" {
     command = <<EOT
         set -e
-        az aks get-credentials --resource-group ${azurerm_resource_group.env_resource_group.name} --name ${azurerm_template_deployment.aks_cluster_arm.outputs.cluster_name} --admin
+        az aks get-credentials --resource-group ${azurerm_resource_group.env_resource_group.name} --name ${azurerm_template_deployment.aks_cluster_arm.outputs.cluster_name} --admin --overwrite-existing
         kubectl apply -f ${path.module}/k8s/helm-rbac.yaml
         kubectl apply -f ${path.module}/k8s/msi-rbac.yaml
         kubectl apply -f ${path.module}/k8s/_output/msi_identity_binding.yaml
         echo "Installing Helm into the Cluster"
         helm init --service-account tiller --wait
     EOT
-  } 
-  
-  depends_on = ["null_resource.msi_template"]
+  }
+
+  depends_on = ["null_resource.msi_template", "null_resource.fix_routetable", "azurerm_template_deployment.aks_cluster_arm"]
 }
 
 resource "null_resource" "concourse_install" {
@@ -36,11 +36,20 @@ resource "null_resource" "concourse_install" {
 	exit 0
       EOT
   }
+<<<<<<< HEAD
   depends_on = ["null_resource.init_mgmt_cluster"]
 }
 
 resource "null_resource" "concourse_job_create" {
   count = "${var.is_mgmt}"
+=======
+
+  depends_on = ["null_resource.init_mgmt_cluster"]
+}
+
+resource "null_resource" "concourse_setup" {
+  count = "${length(var.app_url)}"
+>>>>>>> origin/master
 
   # it should trigger in every terraform run in order to apply the changes in pipeline.
   # later this feature is migrated to the another jenkins job
@@ -76,9 +85,9 @@ resource "null_resource" "concourse_job_create" {
 
 	# concourse job creation
 	sleep 10
-        fly -t  local set-pipeline -p ${var.app_name} -c src/environment/ci/_output/pipeline2.yaml -l src/environment/ci/_output/ci_creds.yaml -n
+         fly -t  local set-pipeline -p ${replace(replace(element(var.app_url, count.index), "https://", ""), "/", "_")} -c src/environment/ci/_output/pipeline-${replace(replace(element(var.app_url, count.index), "https://", ""), "/", "_")}.yaml -l src/environment/ci/_output/ci_creds.yaml -n
         sleep 2
-        fly -t local unpause-pipeline -p ${var.app_name}
+        fly -t local unpause-pipeline -p ${replace(replace(element(var.app_url, count.index), "https://", ""), "/", "_")}
         sleep 2
 
 	# kill the port forwarding and exiting
@@ -92,7 +101,6 @@ resource "null_resource" "concourse_job_create" {
 
 resource "null_resource" "rbac" {
   count = "${var.is_mgmt}"
- 
   provisioner "local-exec" {
     command = <<EOT
       echo "installing rbac"
@@ -100,7 +108,7 @@ resource "null_resource" "rbac" {
     EOT
   }
 
-  depends_on=["null_resource.init_mgmt_cluster"]
+  depends_on = ["null_resource.init_mgmt_cluster"]
 }
 
 resource "null_resource" "chart_museum_setup" {
@@ -111,16 +119,34 @@ resource "null_resource" "chart_museum_setup" {
       helm install --set service.type=LoadBalancer --set env.open.DISABLE_API=false stable/chartmuseum
     EOT
   }
-  depends_on=["null_resource.init_mgmt_cluster"]
+
+  depends_on = ["null_resource.init_mgmt_cluster"]
+}
+
+resource "null_resource" "istio_setup" {
+  count = "${var.is_mgmt}"
+
+  triggers {
+    version = "${timestamp()}"
+  }
+
+  provisioner "local-exec" {
+    command = <<EOT
+    az acr helm repo add --name ${var.wrregistry_helm} --subscription ${var.wrregistry_sub} -u ${var.wrregistry_username} -p ${var.wrregistry_passwd}
+    helm repo update
+    helm install ${var.wrregistry_helm}/istio --timeout 1200 --name istio --namespace istio-system --set servicegraph.enabled=true --set tracing.enabled=true --set grafana.enabled=true
+    EOT
+  }
+  depends_on = ["null_resource.concourse_setup"]
 }
 
 resource "null_resource" "aquasec_setup" {
   count = "${var.is_mgmt}"
-  
+
   provisioner "local-exec" {
     command = <<EOT
       # installing aquasec containers into the cluster. The manifest files contain the hard-coded admin user, license key and installation token
-      kubectl create secret docker-registry dockerhub --docker-server="${var.wrregistry-url}" --docker-username="${var.wrregistry-username}" --docker-password="${var.wrregistry-passwd}" --docker-email=mustafa.atakan@contino.io
+      kubectl create secret docker-registry dockerhub --docker-server="${var.wrregistry_url}" --docker-username="${var.wrregistry_username}" --docker-password="${var.wrregistry_passwd}" --docker-email=mustafa.atakan@contino.io
       kubectl create secret generic aqua-db --from-literal=password=myd8p6pdd
       kubectl apply -f src/environment/aquasec/serviceAccount.yml
       kubectl apply -f src/environment/aquasec/aqua.yml
@@ -143,35 +169,42 @@ resource "null_resource" "aquasec_setup" {
       done
 
       # Adding scanner user to be used at build time
-      curl --insecure -u administrator:myadmin77 -X POST -H "Content-Type: application/json" --data '{"id": "scanner","name": "scanner","password": "myscan77","role": "scanner"}'  http://$myurl:8080/api/v1/users
+      curl --insecure -u ${var.aquasec_scan_username}:${var.aquasec_scan_password} -X POST -H "Content-Type: application/json" --data '{"id": "scanner","name": "${var.aquasec_scan_username}","password": "${var.aquasec_scan_password}","role": "scanner"}'  http://$myurl:8080/api/v1/users
       echo "scanuser IS CREATED IN AQUASEC"
     EOT
   }
-  depends_on=["null_resource.init_mgmt_cluster"]
+
+  depends_on = ["null_resource.concourse_install"]
 }
 
 resource "null_resource" "msi_template" {
   triggers {
     version = "${timestamp()}"
-  } 
+  }
+
   count = "${var.is_mgmt}"
+
+  triggers {
+    time = "${timestamp()}"
+  }
 
   provisioner "local-exec" {
     command = "echo \"${data.template_file.msi_identity_binding_template.rendered}\" > ${path.module}/k8s/_output/msi_identity_binding.yaml"
-  } 
+  }
 
   depends_on = ["azurerm_template_deployment.aks_cluster_arm"]
 }
 
 resource "null_resource" "ci_creds_template" {
   triggers {
-    version ="${timestamp()}"
+    version = "${timestamp()}"
   }
+
   count = "${var.is_mgmt}"
 
   provisioner "local-exec" {
     command = "echo \"${data.template_file.pipeline_credentials.rendered}\" > ${path.module}/ci/_output/ci_creds.yaml"
-  } 
+  }
 }
 
 resource "null_resource" "chartmuseum_url" {
@@ -188,11 +221,12 @@ resource "null_resource" "chartmuseum_url" {
 
 resource "null_resource" "app_setup_template" {
   triggers {
-    version ="${timestamp()}"
+    version = "${timestamp()}"
   }
-  count = "${var.is_mgmt}"
+
+  count = "${length(var.app_url)}"
 
   provisioner "local-exec" {
-    command = "echo \"${data.template_file.app_setup.rendered}\" > ${path.module}/ci/_output/pipeline2.yaml"
-  } 
+    command = "echo \"${data.template_file.app_setup.*.rendered[count.index]}\" > ${path.module}/ci/_output/pipeline-${replace(replace(element(var.app_url, count.index), "https://", ""), "/", "_")}.yaml"
+  }
 }

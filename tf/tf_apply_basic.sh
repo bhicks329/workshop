@@ -2,11 +2,11 @@
 set -eu
 
 create_rand() {
-   if [[ $OSTYPE == 'linux-gnu' ]]; then
+	if [[ $OSTYPE == 'linux-gnu' ]]; then
 		md5sum <<< ${1} | cut -c1-${2}
-   else
+	else
 		md5 -q -s ${1} | cut -c1-${2}
-   fi
+	fi
 }
 
 clean() {

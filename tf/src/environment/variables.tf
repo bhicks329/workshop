@@ -9,11 +9,9 @@ variable "basename" {
 variable "location" {
   type = "string"
 }
-variable "app_name" {
-  type = "string"
-}
 variable "app_url" {
-  type = "string"
+  type = "list"
+  default = []
 }
 variable "branch_name" {
   type = "string"
@@ -28,19 +26,30 @@ variable "cluster_os_disk_size" {
   default = "100"
 }
 
-variable "wrregistry-username" {
+variable "wrregistry_username" {
   type    = "string"
   default = "warroommaster"
 }
-variable "wrregistry-passwd" {
+variable "wrregistry_passwd" {
   type    = "string"
   default = "OzvWnaX4DVWHQlxuZp7Yq+WAjwKKg8K3"
 }
 
-variable "wrregistry-url" {
+variable "wrregistry_url" {
   type    = "string"
   default = "warroommaster.azurecr.io"
 }
+
+variable "wrregistry_helm" {
+  type    = "string"
+  default = "warroommaster"
+}
+
+variable "wrregistry_sub" {
+  type    = "string"
+  default = "8d7951f6-ff12-4e36-822b-cdba7dca0469"
+}
+
 variable "cluster_node_count" {
   type    = "string"
   default = "2"
@@ -77,7 +86,22 @@ variable "is_mgmt" {
   default = "0"
 }
 
+variable "istio-version" {
+  type = "string"
+  default = "1.0.3"
+}
+
 variable "root_dns_zone" {
   type = "string"
   default = "demo.sequenced.net"
+}
+
+variable "aquasec_scan_username" {
+  type = "string"
+  default  = "scanner"
+}
+
+variable "aquasec_scan_password" {
+  type = "string"
+  default  = "myscan77"
 }
