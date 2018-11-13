@@ -105,3 +105,13 @@ variable "aquasec_scan_password" {
   type = "string"
   default  = "myscan77"
 }
+
+variable "aquasec_admin_username" {
+  type = "string"
+  default  = "administrator"
+}
+
+variable "aquasec_admin_password" {
+  type = "string"
+  default  = "myadmin77"
+}
