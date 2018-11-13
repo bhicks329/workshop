@@ -162,7 +162,7 @@ resource "null_resource" "aquasec_setup" {
       done
 
       # Adding scanner user to be used at build time
-      curl --insecure -u ${var.aquasec_scan_username}:${var.aquasec_scan_password} -X POST -H "Content-Type: application/json" --data '{"id": "scanner","name": "${var.aquasec_scan_username}","password": "${var.aquasec_scan_password}","role": "scanner"}'  http://$myurl:8080/api/v1/users
+      curl --insecure -u ${var.aquasec_admin_username}:${var.aquasec_admin_password} -X POST -H "Content-Type: application/json" --data '{"id": "scanner","name": "${var.aquasec_scan_username}","password": "${var.aquasec_scan_password}","role": "scanner"}'  http://$myurl:8080/api/v1/users
       echo "scanuser IS CREATED IN AQUASEC"
     EOT
   }
